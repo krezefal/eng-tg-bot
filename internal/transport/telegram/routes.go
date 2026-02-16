@@ -1,9 +1,11 @@
-package telebot
+package telegram
 
 import (
 	"context"
 
 	tele "gopkg.in/telebot.v4"
+
+	"github.com/krezefal/eng-tg-bot/internal/transport/telegram/ui"
 )
 
 type Handlers interface {
@@ -24,21 +26,23 @@ type Handlers interface {
 	RateCallback(c tele.Context) error
 }
 
-func (t *TelebotServer) InitRoutes(ctx context.Context, h Handlers) {
-	t.telebot.Handle("/start", h.Start)
-	t.telebot.Handle("/help", h.Help)
-	t.telebot.Handle("/помощь", h.Help)
-	t.telebot.Handle("/removeMe", h.RemoveMe)
+func (t *Server) InitRoutes(ctx context.Context, h Handlers) {
+	t.bot.Handle("/start", h.Start)
+	t.bot.Handle("/help", h.Help)
+	t.bot.Handle(ui.MainMenuHelpText, h.Help)
+	t.bot.Handle("/removeMe", h.RemoveMe)
 
-	t.telebot.Handle("/словари", h.Dict)
-	t.telebot.Handle("/моисловари", h.List)
+	t.bot.Handle("/dict", h.Dict)
+	t.bot.Handle(ui.MainMenuDictText, h.Dict)
+	t.bot.Handle("/mydict", h.List)
+	t.bot.Handle(ui.MainMenuMyDictText, h.List)
 
-	t.telebot.Handle("/подписаться", h.Subscribe)
-	t.telebot.Handle("/отписаться", h.Unsubscribe)
+	t.bot.Handle("/sub", h.Subscribe)
+	t.bot.Handle("/unsub", h.Unsubscribe)
 
-	t.telebot.Handle("/учить", h.Learn)
-	t.telebot.Handle(&tele.InlineButton{Unique: "learn"}, h.DecisionCallback)
+	t.bot.Handle("/learn", h.Learn)
+	t.bot.Handle(&tele.InlineButton{Unique: "learn"}, h.DecisionCallback)
 
-	t.telebot.Handle("/повторить", h.Review)
-	t.telebot.Handle(&tele.InlineButton{Unique: "rate"}, h.RateCallback)
+	t.bot.Handle("/review", h.Review)
+	t.bot.Handle(&tele.InlineButton{Unique: "rate"}, h.RateCallback)
 }

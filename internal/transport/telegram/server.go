@@ -1,19 +1,24 @@
-package telebot
+package telegram
 
 import (
 	"github.com/rs/zerolog"
 	tele "gopkg.in/telebot.v4"
 )
 
-type TelebotServer struct {
-	telebot *tele.Bot
-	logger  *zerolog.Logger
+type Server struct {
+	bot    *tele.Bot
+	logger *zerolog.Logger
 }
 
-func New(telebot *tele.Bot, logger *zerolog.Logger) *TelebotServer {
-	return &TelebotServer{telebot, logger}
+func NewServer(bot *tele.Bot, parentLogger *zerolog.Logger) *Server {
+	if parentLogger == nil {
+		panic("logger cannot be nil")
+	}
+	logger := parentLogger.With().Str("component", "telegram_server").Logger()
+
+	return &Server{bot, &logger}
 }
 
-func (t *TelebotServer) Start() {
-	t.telebot.Start()
+func (t *Server) Start() {
+	t.bot.Start()
 }

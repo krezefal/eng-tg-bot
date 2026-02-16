@@ -1,11 +1,6 @@
-package logger
+package log
 
-import (
-	"os"
-
-	"github.com/rs/zerolog"
-	zlog "github.com/rs/zerolog/log"
-)
+import "github.com/kelseyhightower/envconfig"
 
 type Specs struct {
 	Debug      bool   `envconfig:"DEBUG" default:"false"`
@@ -15,10 +10,6 @@ type Specs struct {
 
 var specs Specs
 
-func initFormat() {
-	if specs.LogFormat == "json" {
-		Logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
-	} else {
-		Logger = zlog.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: specs.TimeFormat})
-	}
+func loadSpecs() error {
+	return envconfig.Process("", &specs)
 }

@@ -1,143 +1,223 @@
-package telebot
+package telegram
 
 import (
-	"strconv"
-	"strings"
+	"context"
+	"time"
 
-	"github.com/krezefal/eng-tg-bot/internal/models"
-	telebotServer "github.com/krezefal/eng-tg-bot/internal/server/telebot"
 	"github.com/rs/zerolog"
 	tele "gopkg.in/telebot.v4"
+
+	"github.com/krezefal/eng-tg-bot/internal/transport/telegram/ui"
 )
 
-var _ telebotServer.Handlers = (*Handlers)(nil)
+const handlerCtxTimeout = 5 * time.Second
 
-type Handlers struct {
-	onboardLogic models.OnboardingLogic
-	catalogLogic models.CatalogLogic
-	subsLogic    models.SubscriptionLogic
-	learnLogic   models.LearningLogic
-	reviewLogic  models.ReviewLogic
-	logger       *zerolog.Logger
+var _ Handlers = (*BotHandlers)(nil)
+
+// TODO: add recovering from panics somewhere
+type BotHandlers struct {
+	onboardUC OnboardingUsecase
+	catalogUC CatalogLUsecase
+	subsUC    SubscriptionUsecase
+	learnUC   LearningUsecase
+	reviewUC  ReviewUsecase
+	logger    *zerolog.Logger
 }
 
 func NewHandler(
-	onboardLogic models.OnboardingLogic,
-	catalogLogic models.CatalogLogic,
-	subsLogic models.SubscriptionLogic,
-	learnLogic models.LearningLogic,
-	reviewLogic models.ReviewLogic,
-	logger *zerolog.Logger,
-) *Handlers {
-	if logger == nil {
+	onboardUC OnboardingUsecase,
+	catalogUC CatalogLUsecase,
+	subsUC SubscriptionUsecase,
+	learnUC LearningUsecase,
+	reviewUC ReviewUsecase,
+	parentLogger *zerolog.Logger,
+) *BotHandlers {
+	if parentLogger == nil {
 		panic("logger cannot be nil")
 	}
 
-	if onboardLogic == nil {
-		panic("onboardLogic cannot be nil")
+	// TODO: uncomment
+	//if onboardUC == nil {
+	//	panic("OnboardingUsecase cannot be nil")
+	//}
+	//if catalogUC == nil {
+	//	panic("CatalogLUsecase cannot be nil")
+	//}
+	//if subsUC == nil {
+	//	panic("SubscriptionUsecase cannot be nil")
+	//}
+	//if learnUC == nil {
+	//	panic("LearningUsecase cannot be nil")
+	//}
+	//if reviewUC == nil {
+	//	panic("ReviewUsecase cannot be nil")
+	//}
+
+	logger := parentLogger.With().Str("component", "telegram_handler").Logger()
+
+	return &BotHandlers{
+		onboardUC: onboardUC,
+		catalogUC: catalogUC,
+		subsUC:    subsUC,
+		learnUC:   learnUC,
+		reviewUC:  reviewUC,
+		logger:    &logger,
 	}
-	if catalogLogic == nil {
-		panic("catalogLogic cannot be nil")
-	}
-	if subsLogic == nil {
-		panic("subsLogic cannot be nil")
-	}
-	if learnLogic == nil {
-		panic("learnLogic cannot be nil")
-	}
-	if reviewLogic == nil {
-		panic("reviewLogic cannot be nil")
-	}
-
-	return &Handlers{
-		onboardLogic: onboardLogic,
-		catalogLogic: catalogLogic,
-		subsLogic:    subsLogic,
-		learnLogic:   learnLogic,
-		reviewLogic:  reviewLogic,
-		logger:       logger,
-	}
 }
 
-func (h *Handlers) Start(c tele.Context) error {
-	return h.onboardLogic.Start(c)
-}
+func (h *BotHandlers) Start(c tele.Context) error {
+	const op = "Start"
 
-func (h *Handlers) Help(c tele.Context) error {
-	return h.onboardLogic.Help(c)
-}
+	ctx, cancel := context.WithTimeout(context.Background(), handlerCtxTimeout)
+	defer cancel()
 
-func (h *Handlers) RemoveMe(c tele.Context) error {
-	return h.logic.RemoveMe(c)
-}
-
-func (h *Handlers) Dict(c tele.Context) error {
-	return h.logic.Dict(c)
-}
-
-func (h *Handlers) List(c tele.Context) error {
-	return h.logic.List(c)
-}
-
-func (h *Handlers) Subscribe(c tele.Context) error {
-	return h.logic.Subscribe(c)
-}
-
-func (h *Handlers) Unsubscribe(c tele.Context) error {
-	return h.logic.Unsubscribe(c)
-}
-
-func (h *Handlers) Learn(c tele.Context) error {
-	return h.logic.Learn(c)
-}
-
-func (h *Handlers) DecisionCallback(c tele.Context) error {
-	return h.logic.DecisionCallback(c)
-}
-
-func (h *Handlers) Review(c tele.Context) error {
 	userID := c.Sender().ID
-	dictID := parseDictID(c)
-
-	card, err := h.reviewLogic.Next(c, userID, dictID)
-	if err != nil {
-		return c.Send("Не удалось подобрать слово")
+	updateID := c.Update().ID
+	username := c.Sender().Username
+	messageID := 0
+	if msg := c.Message(); msg != nil {
+		messageID = msg.ID
 	}
 
-	kb := models.BuildRateKeyboard(card.ID)
+	// TODO: remove personal data from logs after alfa-test
+	h.logger.Debug().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Int("message_id", messageID).
+		Msgf("handling %s", op)
 
-	return c.Send(formatCard(card), kb)
+	if err := h.onboardUC.Start(ctx, userID); err != nil {
+		h.logger.Error().
+			Err(err).
+			Int64("user_id", userID).
+			Msgf("%s failed", op)
+
+		return c.Send(ui.InternalErrorMessage)
+	}
+
+	return c.Send(ui.WelcomeMessage, ui.BuildMainMenuKeyboard())
 }
 
-func (h *Handlers) RateCallback(c tele.Context) error {
+func (h *BotHandlers) Help(c tele.Context) error {
+	return c.Send(ui.HelpMessage, ui.BuildMainMenuKeyboard())
+}
+
+func (h *BotHandlers) RemoveMe(c tele.Context) error {
+	const op = "RemoveMe"
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerCtxTimeout)
+	defer cancel()
+
 	userID := c.Sender().ID
-
-	// data: "<wordID>:<grade>"
-	data := c.Data()
-
-	parts := strings.Split(data, ":")
-	if len(parts) != 2 {
-		_ = c.Respond() // убрать "часики"
-		return nil
+	updateID := c.Update().ID
+	username := c.Sender().Username
+	messageID := 0
+	if msg := c.Message(); msg != nil {
+		messageID = msg.ID
 	}
 
-	wordID := parts[0]
+	// TODO: remove personal data from logs after alfa-test
+	h.logger.Debug().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Int("message_id", messageID).
+		Msgf("handling %s", op)
 
-	grade, err := strconv.Atoi(parts[1])
-	if err != nil {
-		_ = c.Respond()
-		return nil
+	if err := h.onboardUC.RemoveMe(ctx, userID); err != nil {
+		h.logger.Error().
+			Err(err).
+			Int64("user_id", userID).
+			Msgf("%s failed", op)
+
+		return c.Send(ui.InternalErrorMessage)
 	}
 
-	// вызываем usecase (без tele.Context)
-	err = h.reviewLogic.Rate(c, userID, wordID, grade)
-	if err != nil {
-		_ = c.Respond()
-		return c.Send("Ошибка при сохранении оценки")
-	}
-
-	// убрать "часики" у кнопки
-	_ = c.Respond()
-
-	return c.Send("Оценка сохранена ✅")
+	return c.Send(ui.RemoveMessage)
 }
+
+func (h *BotHandlers) Dict(c tele.Context) error {
+	return c.Send("WIP")
+}
+
+func (h *BotHandlers) List(c tele.Context) error {
+	return c.Send("WIP")
+}
+
+func (h *BotHandlers) Subscribe(c tele.Context) error {
+	return c.Send("WIP")
+}
+
+func (h *BotHandlers) Unsubscribe(c tele.Context) error {
+	return c.Send("WIP")
+}
+
+func (h *BotHandlers) Learn(c tele.Context) error {
+	return c.Send("WIP")
+}
+
+func (h *BotHandlers) DecisionCallback(c tele.Context) error {
+	return c.Send("WIP")
+}
+
+func (h *BotHandlers) Review(c tele.Context) error {
+	return c.Send("WIP")
+
+	//args := c.Args()
+	//if len(args) == 0 {
+	//	return c.Send("Usage: /repeat <vocabulary>")
+	//}
+	//return c.Send(strings.ToUpper(args[0]))
+}
+
+func (h *BotHandlers) RateCallback(c tele.Context) error {
+	return c.Send("WIP")
+}
+
+//func (h *BotHandlers) Review(c tele.Context) error {
+//	userID := c.Sender().ID
+//	dictID := parseDictID(c)
+//
+//	card, err := h.reviewLogic.Next(c, userID, dictID)
+//	if err != nil {
+//		return c.Send("Не удалось подобрать слово")
+//	}
+//
+//	kb := ui.BuildRateKeyboard(card.ID)
+//
+//	return c.Send(formatCard(card), kb)
+//}
+//
+//func (h *BotHandlers) RateCallback(c tele.Context) error {
+//	userID := c.Sender().ID
+//
+//	// data: "<wordID>:<grade>"
+//	data := c.Data()
+//
+//	parts := strings.Split(data, ":")
+//	if len(parts) != 2 {
+//		_ = c.Respond() // убрать "часики"
+//		return nil
+//	}
+//
+//	wordID := parts[0]
+//
+//	grade, err := strconv.Atoi(parts[1])
+//	if err != nil {
+//		_ = c.Respond()
+//		return nil
+//	}
+//
+//	// вызываем usecase (без tele.Context)
+//	err = h.reviewLogic.Rate(c, userID, wordID, grade)
+//	if err != nil {
+//		_ = c.Respond()
+//		return c.Send("Ошибка при сохранении оценки")
+//	}
+//
+//	// убрать "часики" у кнопки
+//	_ = c.Respond()
+//
+//	return c.Send("Оценка сохранена ✅")
+//}

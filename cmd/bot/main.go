@@ -9,13 +9,16 @@ import (
 
 const serviceName = "eng-tg-bot"
 
+// TODO: add linters
+// TODO: add unit tests
+// TODO: add metrics
 func main() {
 	ctx := context.Background()
 	zerolog := log.For(serviceName)
 
 	app, err := app.New(ctx, zerolog)
 	if err != nil {
-		zerolog.Error().Err(err).Msg("error init app")
+		zerolog.Fatal().Err(err).Msg("error init app")
 	}
 
 	// TODO: context cancellation?

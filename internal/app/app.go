@@ -2,27 +2,26 @@ package app
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/krezefal/eng-tg-bot/internal/logic"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	tele "gopkg.in/telebot.v4"
 
-	telebotHandlers "github.com/krezefal/eng-tg-bot/internal/handlers/telebot"
+	"github.com/krezefal/eng-tg-bot/internal/repository/postgres"
 	"github.com/krezefal/eng-tg-bot/internal/resources"
-	telebotServer "github.com/krezefal/eng-tg-bot/internal/server/telebot"
+	"github.com/krezefal/eng-tg-bot/internal/transport/telegram"
+	"github.com/krezefal/eng-tg-bot/internal/usecase"
 )
 
 type App struct {
-	logger     *zerolog.Logger
-	telebotSrv *telebotServer.TelebotServer
+	logger *zerolog.Logger
+	tgSrv  *telegram.Server
 }
 
-func New(ctx context.Context, l *zerolog.Logger) (*App, error) {
-	log.Info().Msg("initializing application")
+func New(ctx context.Context, logger *zerolog.Logger) (*App, error) {
+	resources := resources.MustGet()
 
-	resources := resources.Get()
+	logger.Info().Msg("initializing application...")
 
 	pref := tele.Settings{
 		Token:  resources.Env.Token,
@@ -31,30 +30,47 @@ func New(ctx context.Context, l *zerolog.Logger) (*App, error) {
 
 	b, err := tele.NewBot(pref)
 	if err != nil {
-		return nil, errors.Wrap(err, "error init telebot")
+		return nil, fmt.Errorf("error init telebot: %w", err)
 	}
 
-	log.Info().Msg("telebot instance initialized")
+	logger.Info().Msg("telebot instance initialized")
 
-	logic := logic.New(nil)
-	handlers := telebotHandlers.New(logic, l)
-	telebotSrv := telebotServer.New(b, l)
+	userRepo := postgres.NewUserRepo(resources.Db, logger)
+	// TODO: uncomment
+	//dictRepo := repository.NewDictionaryRepo(resources.Db, logger)
+	//subsRepo := repository.NewSubscriptionRepo(resources.Db, logger)
+	//wordStateRepo := repository.NewWordStateRepo(resources.Db, logger)
 
-	telebotSrv.InitRoutes(ctx, handlers)
+	onboardUC := usecase.NewOnboardingUsecase(userRepo, logger)
+	// TODO: uncomment
+	//catalogUC := usecase.NewCatalogUsecase(dictRepo, logger)
+	//subscUC := usecase.NewSubscriptionUsecase(userRepo, subsRepo, logger)
+	//learningUC := usecase.NewLearningUsecase(subsRepo, wordStateRepo, logger)
+	//reviewUC := usecase.NewReviewUsecase(wordStateRepo, logger)
 
-	log.Info().Msg("telebot routes initialized")
+	handlers := telegram.NewHandler(
+		onboardUC,
+		nil,
+		nil,
+		nil,
+		nil,
+		logger,
+	)
+
+	tgSrv := telegram.NewServer(b, logger)
+	tgSrv.InitRoutes(ctx, handlers)
 
 	app := &App{
-		logger:     l,
-		telebotSrv: telebotSrv,
+		logger: logger,
+		tgSrv:  tgSrv,
 	}
 
-	log.Info().Msg("application initialized")
+	logger.Info().Msg("application initialized")
 
 	return app, nil
 }
 
 func (a *App) Start() {
 	a.logger.Info().Msg("starting bot")
-	a.telebotSrv.Start()
+	a.tgSrv.Start()
 }
