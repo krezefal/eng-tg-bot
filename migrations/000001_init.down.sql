@@ -7,8 +7,8 @@ DROP TABLE IF EXISTS user_words_state;
 DROP TABLE IF EXISTS user_dictionaries;
 DROP TABLE IF EXISTS dictionary_words;
 DROP TABLE IF EXISTS dictionary_schedule_batch;
-DROP TABLE IF EXISTS dictionaries;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS dictionaries;
 
 DO $$
 BEGIN

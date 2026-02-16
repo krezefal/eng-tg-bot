@@ -20,7 +20,8 @@ END$$;
 
 -- users
 CREATE TABLE IF NOT EXISTS users (
-    tg_id     BIGINT PRIMARY KEY
+    tg_id                BIGINT PRIMARY KEY,
+    active_dictionary_id UUID NULL      -- активный словарь пользака
 );
 
 -- dictionaries
@@ -32,6 +33,13 @@ CREATE TABLE IF NOT EXISTS dictionaries (
     author      VARCHAR(50) NOT NULL DEFAULT '',
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- FK на активный словарь - если словарь удалили, сбросить активный
+ALTER TABLE users
+    ADD CONSTRAINT fk_users_active_dictionary
+        FOREIGN KEY (active_dictionary_id)
+            REFERENCES dictionaries(id)
+            ON DELETE SET NULL;
 
 -- dictionary_schedule_batch
 CREATE TABLE IF NOT EXISTS dictionary_schedule_batch (
