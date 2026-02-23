@@ -142,3 +142,36 @@ func (r *DictionaryRepo) ListRandomPreviewWords(
 
 	return words, nil
 }
+
+// TODO: good place for caching batch of untracked words not to pick from DB
+// every time.
+func (r *DictionaryRepo) PickRandomUntrackedWord(
+	ctx context.Context,
+	userID int64,
+	dictionaryID string,
+) (*domain.LearningWord, error) {
+	const op = "PickRandomUntrackedWord"
+
+	const query = `
+		SELECT dw.id, dw.dictionary_id, dw.spelling, dw.transcription, dw.audio, dw.ru_translation
+		FROM dictionary_words dw
+		LEFT JOIN user_words_state uws
+			ON uws.dict_word_id = dw.id AND uws.user_id = $1
+		WHERE dw.dictionary_id = $2
+			AND uws.dict_word_id IS NULL
+		ORDER BY random()
+		LIMIT 1;
+	`
+
+	row := r.db.QueryRowContext(ctx, query, userID, dictionaryID)
+	word, err := toDomainLearningWord(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("%s failed: %w", op, err)
+	}
+
+	return word, nil
+}

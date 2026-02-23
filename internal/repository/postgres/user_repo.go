@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/rs/zerolog"
@@ -65,6 +66,62 @@ func (r *UserRepo) DeleteUser(ctx context.Context, id int64) error {
 		r.logger.Warn().
 			Int64("tg_id", id).
 			Msgf("%s: user not found", op)
+	}
+
+	return nil
+}
+
+func (r *UserRepo) SetActiveDictionaryID(ctx context.Context, userID int64, dictionaryID string) error {
+	const op = "SetActiveDictionaryID"
+
+	const query = `
+		UPDATE users
+		SET active_dictionary_id = $2
+		WHERE tg_id = $1;
+	`
+
+	_, err := r.db.ExecContext(ctx, query, userID, dictionaryID)
+	if err != nil {
+		return fmt.Errorf("%s failed: %w", op, err)
+	}
+
+	return nil
+}
+
+func (r *UserRepo) GetActiveDictionaryID(ctx context.Context, userID int64) (string, error) {
+	const op = "GetActiveDictionaryID"
+
+	const query = `
+		SELECT COALESCE(active_dictionary_id::text, '')
+		FROM users
+		WHERE tg_id = $1;
+	`
+
+	var dictionaryID string
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(&dictionaryID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
+
+		return "", fmt.Errorf("%s failed: %w", op, err)
+	}
+
+	return dictionaryID, nil
+}
+
+func (r *UserRepo) ClearActiveDictionaryID(ctx context.Context, userID int64) error {
+	const op = "ClearActiveDictionaryID"
+
+	const query = `
+		UPDATE users
+		SET active_dictionary_id = NULL
+		WHERE tg_id = $1;
+	`
+
+	_, err := r.db.ExecContext(ctx, query, userID)
+	if err != nil {
+		return fmt.Errorf("%s failed: %w", op, err)
 	}
 
 	return nil

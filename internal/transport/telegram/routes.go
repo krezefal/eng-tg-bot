@@ -26,8 +26,9 @@ type Handlers interface {
 	RejectUnsubscribe(c tele.Context) error
 
 	// Learning
-	Learn(c tele.Context) error
-	DecisionCallback(c tele.Context) error
+	LearnByDictNum(c tele.Context) error
+	LearnByDictID(c tele.Context) error
+	LearningAction(c tele.Context) error
 
 	// Review
 	Review(c tele.Context) error
@@ -56,9 +57,12 @@ func (t *Server) InitRoutes(_ context.Context, h Handlers) {
 	t.bot.Handle(&tele.InlineButton{Unique: "dict_reject_unsubscribe"}, h.RejectUnsubscribe)
 
 	// Learning
-	t.bot.Handle("/learn", h.Learn)
-	t.bot.Handle(&tele.InlineButton{Unique: "learn"}, h.DecisionCallback)
-	t.bot.Handle(&tele.InlineButton{Unique: "dict_learn"}, h.Learn)
+	t.bot.Handle("/learn", h.LearnByDictNum)
+	t.bot.Handle(&tele.InlineButton{Unique: "dict_learn"}, h.LearnByDictID)
+	t.bot.Handle(ui.LearnAddText, h.LearningAction)
+	t.bot.Handle(ui.LearnBlockText, h.LearningAction)
+	t.bot.Handle(ui.LearnReviewText, h.LearningAction)
+	t.bot.Handle(ui.LearnBackText, h.LearningAction)
 
 	// Review
 	t.bot.Handle("/review", h.Review)

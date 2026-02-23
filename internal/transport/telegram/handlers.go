@@ -3,9 +3,11 @@ package telegram
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/krezefal/eng-tg-bot/internal/transport/telegram/mapper"
 	"github.com/rs/zerolog"
 	tele "gopkg.in/telebot.v4"
 
@@ -232,9 +234,9 @@ func (h *BotHandlers) MyDict(c tele.Context) error {
 
 		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
 	}
-	for _, d := range dictionaries {
+	for i, d := range dictionaries {
 		if err = c.Send(
-			ui.FormatSubscribedDictionaryCard(d),
+			ui.FormatSubscribedDictionaryCard(i+1, d),
 			&tele.SendOptions{
 				ParseMode:   tele.ModeHTML,
 				ReplyMarkup: ui.BuildUserDictionaryInlineKb(d.ID),
@@ -472,6 +474,8 @@ func (h *BotHandlers) ConfirmUnsubscribe(c tele.Context) error {
 
 	err := h.subsUC.Unsubscribe(ctx, userID, dictionaryID)
 	if err != nil {
+		// TODO: move to mapper and use for ConfirmUnsubscribe & Unsubscribe
+		// handlers
 		switch {
 		case errors.Is(err, domain.ErrDictionaryNotFound):
 			// TODO: alert here
@@ -526,15 +530,217 @@ func (h *BotHandlers) RejectUnsubscribe(c tele.Context) error {
 	return c.Send(ui.DictionaryUnsubscribeCanceledMsg, ui.BuildMainMenuReplyKb())
 }
 
-func (h *BotHandlers) Learn(c tele.Context) error {
-	return c.Send("WIP")
+func (h *BotHandlers) LearnByDictNum(c tele.Context) error {
+	const op = "LearnByDictNum"
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerCtxTimeout)
+	defer cancel()
+	if c.Callback() != nil {
+		defer func() {
+			_ = c.Respond()
+		}()
+	}
+
+	userID := c.Sender().ID
+	updateID := c.Update().ID
+	username := c.Sender().Username
+
+	ctxLogger := h.logger.With().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Logger()
+
+	ctxLogger.Debug().Msgf("handling %s", op)
+
+	args := c.Args()
+	if len(args) != 1 {
+		ctxLogger.Debug().Int("args", len(args)).Msgf("%s: incorrect num of args", op)
+
+		return c.Send(ui.LearnUsageMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	trimmed := strings.Trim(strings.TrimSpace(args[0]), "<>")
+	number, convErr := strconv.Atoi(trimmed)
+	if convErr != nil {
+		ctxLogger.Debug().
+			Err(convErr).
+			Str("args[0]", args[0]).
+			Msgf("%s: error converting arg to int", op)
+
+		return c.Send(ui.LearnUsageMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	word, dictionaryID, err := h.learnUC.LearnByDictionaryNumber(ctx, userID, number)
+	if err != nil {
+		mapped := mapper.MapLearningErrorToUI(err)
+		if mapped.State() != mapper.LearningUIUnknown {
+			ctxLogger.Debug().
+				Err(err).
+				Str("dictionary_id", dictionaryID).
+				Msgf("%s handled with mapped learning error", op)
+
+			return mapper.SendLearningMappedError(c, mapped, dictionaryID)
+		}
+
+		// TODO: alert here
+		ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	return c.Send(
+		ui.FormatLearningWordCard(*word),
+		&tele.SendOptions{
+			ParseMode:   tele.ModeHTML,
+			ReplyMarkup: ui.BuildLearningReplyKb(),
+		},
+	)
 }
 
-func (h *BotHandlers) DecisionCallback(c tele.Context) error {
-	return c.Send("WIP")
+func (h *BotHandlers) LearnByDictID(c tele.Context) error {
+	const op = "LearnByDictID"
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerCtxTimeout)
+	defer cancel()
+	if c.Callback() != nil {
+		defer func() {
+			_ = c.Respond()
+		}()
+	}
+
+	userID := c.Sender().ID
+	updateID := c.Update().ID
+	username := c.Sender().Username
+
+	ctxLogger := h.logger.With().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Logger()
+
+	ctxLogger.Debug().Msgf("handling %s", op)
+
+	dictionaryID := extractCallbackDictionaryID(c)
+	if dictionaryID == "" {
+		// TODO: alert here
+		ctxLogger.Error().Msgf("%s: dictionary_id is empty", op)
+
+		return c.Send(ui.DictionaryNotFoundMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	word, err := h.learnUC.LearnByDictionaryID(ctx, userID, dictionaryID)
+	if err != nil {
+		mapped := mapper.MapLearningErrorToUI(err)
+		if mapped.State() != mapper.LearningUIUnknown {
+			ctxLogger.Debug().
+				Err(err).
+				Str("dictionary_id", dictionaryID).
+				Msgf("%s handled with mapped learning error", op)
+
+			return mapper.SendLearningMappedError(c, mapped, dictionaryID)
+		}
+
+		ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	return c.Send(
+		ui.FormatLearningWordCard(*word),
+		&tele.SendOptions{
+			ParseMode:   tele.ModeHTML,
+			ReplyMarkup: ui.BuildLearningReplyKb(),
+		},
+	)
+}
+
+func (h *BotHandlers) LearningAction(c tele.Context) error {
+	const op = "LearningAction"
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerCtxTimeout)
+	defer cancel()
+	if c.Callback() != nil {
+		defer func() {
+			_ = c.Respond()
+		}()
+	}
+
+	userID := c.Sender().ID
+	updateID := c.Update().ID
+	username := c.Sender().Username
+
+	ctxLogger := h.logger.With().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Logger()
+
+	ctxLogger.Debug().Msgf("handling %s", op)
+
+	switch c.Text() {
+	case ui.LearnAddText:
+		return h.handleLearningDecision(ctx, userID, h.learnUC.AddCurrentWord, ctxLogger, op, c)
+	case ui.LearnBlockText:
+		return h.handleLearningDecision(ctx, userID, h.learnUC.BlockCurrentWord, ctxLogger, op, c)
+	case ui.LearnReviewText:
+		return c.Send(ui.LearnReviewWIPMsg, ui.BuildLearningReplyKb())
+	case ui.LearnBackText:
+		if err := h.learnUC.Back(ctx, userID); err != nil {
+			ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+		}
+
+		return c.Send(ui.ToMainMenuMsg, ui.BuildMainMenuReplyKb())
+	default:
+		return nil
+	}
+}
+
+func (h *BotHandlers) handleLearningDecision(
+	ctx context.Context,
+	userID int64,
+	decisionFn func(context.Context, int64) (*domain.LearningWord, error),
+	ctxLogger zerolog.Logger,
+	op string,
+	c tele.Context,
+) error {
+	word, err := decisionFn(ctx, userID)
+	if err != nil {
+		dictionaryID, _ := h.learnUC.ActiveDictionaryID(ctx, userID)
+
+		mapped := mapper.MapLearningErrorToUI(err)
+		if mapped.State() != mapper.LearningUIUnknown {
+			ctxLogger.Debug().
+				Err(err).
+				Str("dictionary_id", dictionaryID).
+				Msgf("%s handled with mapped learning error", op)
+
+			return mapper.SendLearningMappedError(c, mapped, dictionaryID)
+		}
+
+		ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	return c.Send(
+		ui.FormatLearningWordCard(*word),
+		&tele.SendOptions{
+			ParseMode:   tele.ModeHTML,
+			ReplyMarkup: ui.BuildLearningReplyKb(),
+		},
+	)
 }
 
 func (h *BotHandlers) Review(c tele.Context) error {
+	if c.Callback() != nil {
+		defer func() {
+			_ = c.Respond()
+		}()
+	}
+
 	return c.Send("WIP")
 
 	//args := c.Args()

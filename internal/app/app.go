@@ -11,6 +11,7 @@ import (
 	"github.com/krezefal/eng-tg-bot/internal/resources"
 	"github.com/krezefal/eng-tg-bot/internal/transport/telegram"
 	"github.com/krezefal/eng-tg-bot/internal/usecase/catalog"
+	"github.com/krezefal/eng-tg-bot/internal/usecase/learning"
 	"github.com/krezefal/eng-tg-bot/internal/usecase/onboarding"
 	"github.com/krezefal/eng-tg-bot/internal/usecase/subscription"
 )
@@ -40,19 +41,19 @@ func New(ctx context.Context, logger *zerolog.Logger) (*App, error) {
 	userRepo := postgres.NewUserRepo(resources.Db, logger)
 	dictRepo := postgres.NewDictionaryRepo(resources.Db, logger)
 	subsRepo := postgres.NewSubscriptionsRepo(resources.Db, logger)
-	//wordStateRepo := repository.NewWordStateRepo(resources.Db, logger)
+	wordsStateRepo := postgres.NewWordsStateRepo(resources.Db, logger)
 
 	onboardUC := onboarding.NewUsecase(userRepo, logger)
 	catalogUC := catalog.NewUsecase(dictRepo, subsRepo, logger)
 	subscUC := subscription.NewUsecase(userRepo, dictRepo, subsRepo, logger)
-	//learningUC := usecase.NewLearningUsecase(subsRepo, wordStateRepo, logger)
+	learningUC := learning.NewUsecase(userRepo, dictRepo, subsRepo, wordsStateRepo, logger)
 	//reviewUC := usecase.NewReviewUsecase(wordStateRepo, logger)
 
 	handlers := telegram.NewHandler(
 		onboardUC,
 		catalogUC,
 		subscUC,
-		nil,
+		learningUC,
 		nil,
 		logger,
 	)

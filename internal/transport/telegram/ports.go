@@ -24,8 +24,12 @@ type SubscriptionUsecase interface {
 }
 
 type LearningUsecase interface {
-	Learn(ctx context.Context, userID int64, dictionaryID string) error
-	DecisionCallback(ctx context.Context, userID int64, decision string) error
+	LearnByDictionaryNumber(ctx context.Context, userID int64, number int) (*domain.LearningWord, string, error)
+	LearnByDictionaryID(ctx context.Context, userID int64, dictionaryID string) (*domain.LearningWord, error)
+	AddCurrentWord(ctx context.Context, userID int64) (*domain.LearningWord, error)
+	BlockCurrentWord(ctx context.Context, userID int64) (*domain.LearningWord, error)
+	ActiveDictionaryID(ctx context.Context, userID int64) (string, error)
+	Back(ctx context.Context, userID int64) error
 }
 
 type ReviewUsecase interface {

@@ -53,18 +53,45 @@ func (r *SubscriptionsRepo) Subscribe(ctx context.Context, userID int64, diction
 func (r *SubscriptionsRepo) Unsubscribe(ctx context.Context, userID int64, dictionaryID string) (bool, error) {
 	const op = "Unsubscribe"
 
-	const query = `
+	const deleteSubscriptionQuery = `
 		DELETE FROM user_dictionaries
 		WHERE user_id = $1 AND dictionary_id = $2;
 	`
 
-	res, err := r.db.ExecContext(ctx, query, userID, dictionaryID)
+	const deleteProgressQuery = `
+		DELETE FROM user_words_state uws
+		USING dictionary_words dw
+		WHERE uws.user_id = $1
+			AND uws.dict_word_id = dw.id
+			AND dw.dictionary_id = $2;
+	`
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, fmt.Errorf("%s failed: %w", op, err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	res, err := tx.ExecContext(ctx, deleteSubscriptionQuery, userID, dictionaryID)
 	if err != nil {
 		return false, fmt.Errorf("%s failed: %w", op, err)
 	}
 
 	rows, err := res.RowsAffected()
 	if err != nil {
+		return false, fmt.Errorf("%s failed: %w", op, err)
+	}
+	if rows == 0 {
+		return false, nil
+	}
+
+	if _, err = tx.ExecContext(ctx, deleteProgressQuery, userID, dictionaryID); err != nil {
+		return false, fmt.Errorf("%s failed: %w", op, err)
+	}
+
+	if err = tx.Commit(); err != nil {
 		return false, fmt.Errorf("%s failed: %w", op, err)
 	}
 
@@ -123,4 +150,32 @@ func (r *SubscriptionsRepo) IsSubscribedByUser(ctx context.Context, userID int64
 	}
 
 	return exists, nil
+}
+
+// MarkLearningStarted marks the user as having started learning a dictionary.
+// Updates are only applied to dictionaries the user is using for the first
+// time.
+func (r *SubscriptionsRepo) MarkLearningStarted(ctx context.Context, userID int64, dictionaryID string) error {
+	const op = "MarkLearningStarted"
+
+	const query = `
+		UPDATE user_dictionaries
+		SET start_learning_at = COALESCE(start_learning_at, now())
+		WHERE user_id = $1 AND dictionary_id = $2;
+	`
+
+	res, err := r.db.ExecContext(ctx, query, userID, dictionaryID)
+	if err != nil {
+		return fmt.Errorf("%s failed: %w", op, err)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("%s failed: %w", op, err)
+	}
+	if rows == 0 {
+		return domain.ErrSubscriptionNotFound
+	}
+
+	return nil
 }

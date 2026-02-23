@@ -36,3 +36,20 @@ func toDomainDictionaryWordPreview(scanner rowScanner) (*domain.DictionaryWordPr
 
 	return &w, nil
 }
+
+func toDomainLearningWord(scanner rowScanner) (*domain.LearningWord, error) {
+	var w domain.LearningWord
+	err := scanner.Scan(
+		&w.ID,
+		&w.DictionaryID,
+		&w.Spelling,
+		&w.Transcription,
+		&w.Audio,
+		&w.RUTranslation,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert into learning word: %w", err)
+	}
+
+	return &w, nil
+}
