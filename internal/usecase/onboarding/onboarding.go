@@ -1,4 +1,4 @@
-package usecase
+package onboarding
 
 import (
 	"context"
@@ -7,17 +7,12 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type UserRepo interface {
-	CreateUser(ctx context.Context, id int64) error
-	DeleteUser(ctx context.Context, id int64) error
-}
-
 type OnboardingUsecase struct {
 	userRepo UserRepo
 	logger   *zerolog.Logger
 }
 
-func NewOnboardingUsecase(userRepo UserRepo, parentLogger *zerolog.Logger) *OnboardingUsecase {
+func NewUsecase(userRepo UserRepo, parentLogger *zerolog.Logger) *OnboardingUsecase {
 	if parentLogger == nil {
 		panic("logger cannot be nil")
 	}
@@ -31,7 +26,7 @@ func NewOnboardingUsecase(userRepo UserRepo, parentLogger *zerolog.Logger) *Onbo
 }
 
 func (u *OnboardingUsecase) Start(ctx context.Context, userID int64) error {
-	const op = "OnboardingUsecase.Start"
+	const op = "Start"
 
 	// idempotence creation
 	err := u.userRepo.CreateUser(ctx, userID)
@@ -47,7 +42,7 @@ func (u *OnboardingUsecase) Start(ctx context.Context, userID int64) error {
 }
 
 func (u *OnboardingUsecase) RemoveMe(ctx context.Context, userID int64) error {
-	const op = "OnboardingUsecase.RemoveMe"
+	const op = "RemoveMe"
 
 	// idempotence deletion
 	err := u.userRepo.DeleteUser(ctx, userID)

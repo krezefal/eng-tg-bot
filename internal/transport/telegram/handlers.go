@@ -2,11 +2,14 @@ package telegram
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
 	tele "gopkg.in/telebot.v4"
 
+	"github.com/krezefal/eng-tg-bot/internal/domain"
 	"github.com/krezefal/eng-tg-bot/internal/transport/telegram/ui"
 )
 
@@ -17,7 +20,7 @@ var _ Handlers = (*BotHandlers)(nil)
 // TODO: add recovering from panics somewhere
 type BotHandlers struct {
 	onboardUC OnboardingUsecase
-	catalogUC CatalogLUsecase
+	catalogUC CatalogUsecase
 	subsUC    SubscriptionUsecase
 	learnUC   LearningUsecase
 	reviewUC  ReviewUsecase
@@ -26,7 +29,7 @@ type BotHandlers struct {
 
 func NewHandler(
 	onboardUC OnboardingUsecase,
-	catalogUC CatalogLUsecase,
+	catalogUC CatalogUsecase,
 	subsUC SubscriptionUsecase,
 	learnUC LearningUsecase,
 	reviewUC ReviewUsecase,
@@ -36,16 +39,15 @@ func NewHandler(
 		panic("logger cannot be nil")
 	}
 
-	// TODO: uncomment
-	//if onboardUC == nil {
-	//	panic("OnboardingUsecase cannot be nil")
-	//}
-	//if catalogUC == nil {
-	//	panic("CatalogLUsecase cannot be nil")
-	//}
-	//if subsUC == nil {
-	//	panic("SubscriptionUsecase cannot be nil")
-	//}
+	if onboardUC == nil {
+		panic("OnboardingUsecase cannot be nil")
+	}
+	if catalogUC == nil {
+		panic("CatalogUsecase cannot be nil")
+	}
+	if subsUC == nil {
+		panic("SubscriptionUsecase cannot be nil")
+	}
 	//if learnUC == nil {
 	//	panic("LearningUsecase cannot be nil")
 	//}
@@ -74,33 +76,29 @@ func (h *BotHandlers) Start(c tele.Context) error {
 	userID := c.Sender().ID
 	updateID := c.Update().ID
 	username := c.Sender().Username
-	messageID := 0
-	if msg := c.Message(); msg != nil {
-		messageID = msg.ID
-	}
 
 	// TODO: remove personal data from logs after alfa-test
-	h.logger.Debug().
+	ctxLogger := h.logger.With().
 		Int("update_id", updateID).
 		Int64("user_id", userID).
 		Str("username", username).
-		Int("message_id", messageID).
-		Msgf("handling %s", op)
+		Logger()
+
+	ctxLogger.Debug().Msgf("handling %s", op)
 
 	if err := h.onboardUC.Start(ctx, userID); err != nil {
-		h.logger.Error().
-			Err(err).
-			Int64("user_id", userID).
-			Msgf("%s failed", op)
+		ctxLogger.Error().Err(err).Msgf("%s failed", op)
 
-		return c.Send(ui.InternalErrorMessage)
+		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
 	}
 
-	return c.Send(ui.WelcomeMessage, ui.BuildMainMenuKeyboard())
+	ctxLogger.Debug().Msgf("%s handled", op)
+
+	return c.Send(ui.WelcomeMsg, ui.BuildMainMenuReplyKb())
 }
 
 func (h *BotHandlers) Help(c tele.Context) error {
-	return c.Send(ui.HelpMessage, ui.BuildMainMenuKeyboard())
+	return c.Send(ui.HelpMsg, ui.BuildMainMenuReplyKb())
 }
 
 func (h *BotHandlers) RemoveMe(c tele.Context) error {
@@ -112,45 +110,420 @@ func (h *BotHandlers) RemoveMe(c tele.Context) error {
 	userID := c.Sender().ID
 	updateID := c.Update().ID
 	username := c.Sender().Username
-	messageID := 0
-	if msg := c.Message(); msg != nil {
-		messageID = msg.ID
-	}
 
 	// TODO: remove personal data from logs after alfa-test
-	h.logger.Debug().
+	ctxLogger := h.logger.With().
 		Int("update_id", updateID).
 		Int64("user_id", userID).
 		Str("username", username).
-		Int("message_id", messageID).
-		Msgf("handling %s", op)
+		Logger()
+
+	ctxLogger.Debug().Msgf("handling %s", op)
 
 	if err := h.onboardUC.RemoveMe(ctx, userID); err != nil {
-		h.logger.Error().
-			Err(err).
-			Int64("user_id", userID).
-			Msgf("%s failed", op)
+		ctxLogger.Error().Err(err).Msgf("%s failed", op)
 
-		return c.Send(ui.InternalErrorMessage)
+		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
 	}
 
-	return c.Send(ui.RemoveMessage)
+	ctxLogger.Info().Msgf("%s handled", op)
+
+	return c.Send(ui.RemoveMsg, ui.BuildMainMenuReplyKb())
 }
 
 func (h *BotHandlers) Dict(c tele.Context) error {
-	return c.Send("WIP")
+	const op = "Dict"
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerCtxTimeout)
+	defer cancel()
+	if c.Callback() != nil {
+		defer func() {
+			_ = c.Respond()
+		}()
+	}
+
+	userID := c.Sender().ID
+	updateID := c.Update().ID
+	username := c.Sender().Username
+
+	// TODO: remove personal data from logs after alfa-test
+	ctxLogger := h.logger.With().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Logger()
+
+	ctxLogger.Debug().Msgf("handling %s", op)
+
+	dictionaries, err := h.catalogUC.PublicDictionaries(ctx)
+	if err != nil {
+		ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	if len(dictionaries) == 0 {
+		ctxLogger.Warn().Msgf("%s: no public dicts found", op)
+
+		return c.Send(ui.PublicDictionariesEmptyMsg, ui.BuildMainMenuReplyKb())
+	}
+	if err = c.Send(ui.PublicDictionariesHeaderMsg, ui.BuildMainMenuReplyKb()); err != nil {
+		ctxLogger.Error().Err(err).Msgf("%s failed sent main_menu_kb", op)
+
+		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+	}
+	for _, d := range dictionaries {
+		if err = c.Send(
+			ui.FormatDictionaryCard(d),
+			&tele.SendOptions{
+				ParseMode:   tele.ModeHTML,
+				ReplyMarkup: ui.BuildPublicDictionaryInlineKb(d.ID),
+			},
+		); err != nil {
+			ctxLogger.Error().Err(err).Msgf("%s failed send dict", op)
+
+			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+		}
+	}
+
+	ctxLogger.Debug().Msgf("%s handled", op)
+
+	return nil
 }
 
-func (h *BotHandlers) List(c tele.Context) error {
-	return c.Send("WIP")
+func (h *BotHandlers) MyDict(c tele.Context) error {
+	const op = "MyDict"
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerCtxTimeout)
+	defer cancel()
+	if c.Callback() != nil {
+		defer func() {
+			_ = c.Respond()
+		}()
+	}
+
+	userID := c.Sender().ID
+	updateID := c.Update().ID
+	username := c.Sender().Username
+
+	// TODO: remove personal data from logs after alfa-test
+	ctxLogger := h.logger.With().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Logger()
+
+	ctxLogger.Debug().Msgf("handling %s", op)
+
+	dictionaries, err := h.catalogUC.UserDictionaries(ctx, userID)
+	if err != nil {
+		ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	if len(dictionaries) == 0 {
+		ctxLogger.Debug().Msgf("%s: user doesn't have subscribed dicts", op)
+
+		return c.Send(ui.UserDictionariesEmptyMsg, ui.BuildMainMenuReplyKb())
+	}
+	if err = c.Send(ui.UserDictionariesHeaderMsg, ui.BuildMainMenuReplyKb()); err != nil {
+		ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+	}
+	for _, d := range dictionaries {
+		if err = c.Send(
+			ui.FormatSubscribedDictionaryCard(d),
+			&tele.SendOptions{
+				ParseMode:   tele.ModeHTML,
+				ReplyMarkup: ui.BuildUserDictionaryInlineKb(d.ID),
+			},
+		); err != nil {
+			ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+		}
+	}
+
+	ctxLogger.Debug().Msgf("%s handled", op)
+
+	return nil
+}
+
+func (h *BotHandlers) DictDetails(c tele.Context) error {
+	const op = "DictDetails"
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerCtxTimeout)
+	defer cancel()
+	if c.Callback() != nil {
+		defer func() {
+			_ = c.Respond()
+		}()
+	}
+
+	userID := c.Sender().ID
+	updateID := c.Update().ID
+	username := c.Sender().Username
+
+	ctxLogger := h.logger.With().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Logger()
+
+	ctxLogger.Debug().Msgf("handling %s", op)
+
+	dictionaryID := extractCallbackDictionaryID(c)
+	if dictionaryID == "" {
+		// TODO: alert here
+		ctxLogger.Error().Msgf("%s: dictionary_id is empty", op)
+
+		return c.Send(ui.DictionaryNotFoundMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	ctxLogger = ctxLogger.With().Str("dictionary_id", dictionaryID).Logger()
+
+	details, err := h.catalogUC.DictionaryDetails(ctx, userID, dictionaryID)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrDictionaryNotFound):
+			// TODO: alert here
+			ctxLogger.Error().Err(err).Msgf("%s: unable to find dictionary by dictionary_id", op)
+
+			return c.Send(ui.DictionaryNotFoundMsg, ui.BuildMainMenuReplyKb())
+
+		default:
+			ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+		}
+	}
+
+	ctxLogger.Debug().Msgf("%s handled", op)
+
+	return c.Send(
+		ui.FormatDictionaryDetails(*details.Dictionary, details.Words),
+		&tele.SendOptions{
+			ParseMode:   tele.ModeHTML,
+			ReplyMarkup: ui.BuildDictionaryDetailsInlineKb(details.Dictionary.ID),
+		},
+	)
 }
 
 func (h *BotHandlers) Subscribe(c tele.Context) error {
-	return c.Send("WIP")
+	const op = "Subscribe"
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerCtxTimeout)
+	defer cancel()
+	if c.Callback() != nil {
+		defer func() {
+			_ = c.Respond()
+		}()
+	}
+
+	userID := c.Sender().ID
+	updateID := c.Update().ID
+	username := c.Sender().Username
+
+	// TODO: remove personal data from logs after alfa-test
+	ctxLogger := h.logger.With().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Logger()
+
+	ctxLogger.Debug().Msgf("handling %s", op)
+
+	dictionaryID := extractCallbackDictionaryID(c)
+	if dictionaryID == "" {
+		// TODO: alert here
+		ctxLogger.Error().Msgf("%s: dictionary_id is empty", op)
+
+		return c.Send(ui.DictionaryNotFoundMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	ctxLogger = ctxLogger.With().Str("dictionary_id", dictionaryID).Logger()
+
+	if err := h.subsUC.Subscribe(ctx, userID, dictionaryID); err != nil {
+		switch {
+		case errors.Is(err, domain.ErrDictionaryNotFound):
+			// TODO: alert here
+			ctxLogger.Error().Err(err).Msgf("%s: unable to find dictionary by dictionary_id", op)
+
+			return c.Send(ui.DictionaryNotFoundMsg, ui.BuildMainMenuReplyKb())
+
+		case errors.Is(err, domain.ErrAlreadySubscribed):
+			ctxLogger.Debug().Msgf("%s: already subscribed", op)
+
+			return c.Send(ui.DictionaryAlreadySubscribedMsg, ui.BuildMainMenuReplyKb())
+
+		default:
+			ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+		}
+	}
+
+	ctxLogger.Debug().Msgf("%s handled", op)
+
+	return c.Send(ui.DictionarySubscribedMsg, ui.BuildMainMenuReplyKb())
 }
 
 func (h *BotHandlers) Unsubscribe(c tele.Context) error {
-	return c.Send("WIP")
+	const op = "Unsubscribe"
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerCtxTimeout)
+	defer cancel()
+	if c.Callback() != nil {
+		defer func() {
+			_ = c.Respond()
+		}()
+	}
+
+	userID := c.Sender().ID
+	updateID := c.Update().ID
+	username := c.Sender().Username
+
+	// TODO: remove personal data from logs after alfa-test
+	ctxLogger := h.logger.With().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Logger()
+
+	ctxLogger.Debug().Msgf("handling %s", op)
+
+	dictionaryID := extractCallbackDictionaryID(c)
+	if dictionaryID == "" {
+		// TODO: alert here
+		ctxLogger.Error().Msgf("%s: dictionary_id is empty", op)
+
+		return c.Send(ui.DictionaryNotFoundMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	ctxLogger = ctxLogger.With().Str("dictionary_id", dictionaryID).Logger()
+
+	if err := h.subsUC.EnsureSubscribed(ctx, userID, dictionaryID); err != nil {
+		switch {
+		case errors.Is(err, domain.ErrDictionaryNotFound):
+			// TODO: alert here
+			ctxLogger.Error().Err(err).Msgf("%s: unable to find dictionary by dictionary_id", op)
+
+			return c.Send(ui.DictionaryNotFoundMsg, ui.BuildMainMenuReplyKb())
+
+		case errors.Is(err, domain.ErrSubscriptionNotFound):
+			ctxLogger.Debug().Msgf("%s: not subscribed", op)
+
+			return c.Send(ui.DictionarySubscriptionNotFoundMsg, ui.BuildMainMenuReplyKb())
+
+		default:
+			ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+		}
+	}
+
+	ctxLogger.Debug().Msgf("%s confirmation requested", op)
+
+	return c.Send(
+		ui.DictionaryUnsubscribeConfirmMsg,
+		&tele.SendOptions{ReplyMarkup: ui.BuildUnsubscribeConfirmInlineKb(dictionaryID)},
+	)
+}
+
+func (h *BotHandlers) ConfirmUnsubscribe(c tele.Context) error {
+	const op = "ConfirmUnsubscribe"
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerCtxTimeout)
+	defer cancel()
+
+	userID := c.Sender().ID
+	updateID := c.Update().ID
+	username := c.Sender().Username
+
+	// TODO: remove personal data from logs after alfa-test
+	ctxLogger := h.logger.With().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Logger()
+
+	if c.Callback() != nil {
+		defer func() {
+			_ = c.Respond()
+			if err := c.Delete(); err != nil {
+				ctxLogger.Warn().Err(err).Msgf("%s: failed to delete confirm message", op)
+			}
+		}()
+	}
+
+	ctxLogger.Debug().Msgf("handling %s", op)
+
+	dictionaryID := extractCallbackDictionaryID(c)
+	if dictionaryID == "" {
+		// TODO: alert here
+		ctxLogger.Error().Msgf("%s: dictionary_id is empty", op)
+
+		return c.Send(ui.DictionaryNotFoundMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	ctxLogger = ctxLogger.With().Str("dictionary_id", dictionaryID).Logger()
+
+	err := h.subsUC.Unsubscribe(ctx, userID, dictionaryID)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrDictionaryNotFound):
+			// TODO: alert here
+			ctxLogger.Error().Err(err).Msgf("%s: unable to find dictionary by dictionary_id", op)
+
+			return c.Send(ui.DictionaryNotFoundMsg, ui.BuildMainMenuReplyKb())
+
+		case errors.Is(err, domain.ErrSubscriptionNotFound):
+			ctxLogger.Debug().Msgf("%s: not subscribed", op)
+
+			return c.Send(ui.DictionarySubscriptionNotFoundMsg, ui.BuildMainMenuReplyKb())
+
+		default:
+			ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+		}
+	}
+
+	ctxLogger.Debug().Msgf("%s handled", op)
+
+	return c.Send(ui.DictionaryUnsubscribedMsg, ui.BuildMainMenuReplyKb())
+}
+
+func (h *BotHandlers) RejectUnsubscribe(c tele.Context) error {
+	const op = "RejectUnsubscribe"
+
+	// TODO (high): add basic handler && add there helper-funcs for doing staff
+	// like init ctxLogger, getting request params, validation
+	userID := c.Sender().ID
+	updateID := c.Update().ID
+	username := c.Sender().Username
+
+	// TODO: remove personal data from logs after alfa-test
+	ctxLogger := h.logger.With().
+		Int("update_id", updateID).
+		Int64("user_id", userID).
+		Str("username", username).
+		Logger()
+
+	if c.Callback() != nil {
+		defer func() {
+			_ = c.Respond()
+			if err := c.Delete(); err != nil {
+				ctxLogger.Warn().Err(err).Msgf("%s: failed to delete confirm message", op)
+			}
+		}()
+	}
+
+	ctxLogger.Debug().Msgf("%s handled", op)
+
+	return c.Send(ui.DictionaryUnsubscribeCanceledMsg, ui.BuildMainMenuReplyKb())
 }
 
 func (h *BotHandlers) Learn(c tele.Context) error {
@@ -173,6 +546,14 @@ func (h *BotHandlers) Review(c tele.Context) error {
 
 func (h *BotHandlers) RateCallback(c tele.Context) error {
 	return c.Send("WIP")
+}
+
+func extractCallbackDictionaryID(c tele.Context) string {
+	if c.Callback() != nil {
+		return strings.TrimSpace(c.Data())
+	}
+
+	return ""
 }
 
 //func (h *BotHandlers) Review(c tele.Context) error {

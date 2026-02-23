@@ -12,6 +12,9 @@ const serviceName = "eng-tg-bot"
 // TODO: add linters
 // TODO: add unit tests
 // TODO: add metrics
+// TODO: logger level audit
+// TODO: mark places for alerts
+// TODO: add panics handling
 func main() {
 	ctx := context.Background()
 	zerolog := log.For(serviceName)

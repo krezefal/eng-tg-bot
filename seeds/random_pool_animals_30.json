@@ -1,0 +1,40 @@
+{
+  "dictionary": {
+    "title": "30 слов про животных",
+    "description": "Тестовый словарь про животных на 30 слов",
+    "mode": "random_pool",
+    "author": "Тест Экзамполович"
+  },
+  "words": [
+    { "spelling": "animal", "transcription": "/ˈænɪməl/", "audio": "", "ru_translation": "животное" },
+    { "spelling": "ant", "transcription": "/ænt/", "audio": "", "ru_translation": "муравей" },
+    { "spelling": "bear", "transcription": "/beə/", "audio": "", "ru_translation": "медведь" },
+    { "spelling": "bee", "transcription": "/biː/", "audio": "", "ru_translation": "пчела" },
+    { "spelling": "bird", "transcription": "/bɜːd/", "audio": "", "ru_translation": "птица" },
+    { "spelling": "camel", "transcription": "/ˈkæməl/", "audio": "", "ru_translation": "верблюд" },
+    { "spelling": "cat", "transcription": "/kæt/", "audio": "", "ru_translation": "кот" },
+    { "spelling": "chicken", "transcription": "/ˈtʃɪkɪn/", "audio": "", "ru_translation": "курица" },
+    { "spelling": "cow", "transcription": "/kaʊ/", "audio": "", "ru_translation": "корова" },
+    { "spelling": "crocodile", "transcription": "/ˈkrɒkədaɪl/", "audio": "", "ru_translation": "крокодил" },
+    { "spelling": "deer", "transcription": "/dɪə/", "audio": "", "ru_translation": "олень" },
+    { "spelling": "dog", "transcription": "/dɒɡ/", "audio": "", "ru_translation": "собака" },
+    { "spelling": "dolphin", "transcription": "/ˈdɒlfɪn/", "audio": "", "ru_translation": "дельфин" },
+    { "spelling": "duck", "transcription": "/dʌk/", "audio": "", "ru_translation": "утка" },
+    { "spelling": "eagle", "transcription": "/ˈiːɡl/", "audio": "", "ru_translation": "орел" },
+    { "spelling": "elephant", "transcription": "/ˈelɪfənt/", "audio": "", "ru_translation": "слон" },
+    { "spelling": "fish", "transcription": "/fɪʃ/", "audio": "", "ru_translation": "рыба" },
+    { "spelling": "fox", "transcription": "/fɒks/", "audio": "", "ru_translation": "лиса" },
+    { "spelling": "frog", "transcription": "/frɒɡ/", "audio": "", "ru_translation": "лягушка" },
+    { "spelling": "giraffe", "transcription": "/dʒɪˈrɑːf/", "audio": "", "ru_translation": "жираф" },
+    { "spelling": "goat", "transcription": "/ɡəʊt/", "audio": "", "ru_translation": "коза" },
+    { "spelling": "hamster", "transcription": "/ˈhæmstə/", "audio": "", "ru_translation": "хомяк" },
+    { "spelling": "horse", "transcription": "/hɔːs/", "audio": "", "ru_translation": "лошадь" },
+    { "spelling": "kangaroo", "transcription": "/ˌkæŋɡəˈruː/", "audio": "", "ru_translation": "кенгуру" },
+    { "spelling": "kitten", "transcription": "/ˈkɪtn/", "audio": "", "ru_translation": "котенок" },
+    { "spelling": "lion", "transcription": "/ˈlaɪən/", "audio": "", "ru_translation": "лев" },
+    { "spelling": "monkey", "transcription": "/ˈmʌŋki/", "audio": "", "ru_translation": "обезьяна" },
+    { "spelling": "mouse", "transcription": "/maʊs/", "audio": "", "ru_translation": "мышь" },
+    { "spelling": "panda", "transcription": "/ˈpændə/", "audio": "", "ru_translation": "панда" },
+    { "spelling": "parrot", "transcription": "/ˈpærət/", "audio": "", "ru_translation": "попугай" }
+  ]
+}

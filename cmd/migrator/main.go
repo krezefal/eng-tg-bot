@@ -23,23 +23,36 @@ const serviceName = "migrator"
 const (
 	flagUpName   = "up"
 	flagDownName = "down"
-	envDBDSN     = "DB_DSN"
+	flagHelpName = "help"
+
+	envDBDSN = "DB_DSN"
 )
 
 var logger = log.For(serviceName)
 
+func helpFn() {
+	fmt.Fprintf(flag.CommandLine.Output(), "Usage: %s [--up | --down]\n\n", os.Args[0])
+	flag.PrintDefaults()
+}
+
 func main() {
 	up := flag.Bool(flagUpName, false, "apply all pending migrations")
 	down := flag.Bool(flagDownName, false, "rollback all applied migrations")
+	help := flag.Bool(flagHelpName, false, "show usage")
+	flag.Usage = helpFn
 	flag.Parse()
 
-	logger.Info().Msg("running migrator")
-	if err := run(*up, *down); err != nil {
+	if err := run(*help, *up, *down); err != nil {
 		logger.Fatal().Err(err).Msg("migrator run error")
 	}
 }
 
-func run(up, down bool) error {
+func run(help, up, down bool) error {
+	if help {
+		flag.Usage()
+		return nil
+	}
+
 	if up == down {
 		return fmt.Errorf("set exactly one flag: --%s or --%s", flagUpName, flagDownName)
 	}

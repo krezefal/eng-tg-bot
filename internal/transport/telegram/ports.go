@@ -3,7 +3,7 @@ package telegram
 import (
 	"context"
 
-	tele "gopkg.in/telebot.v4"
+	"github.com/krezefal/eng-tg-bot/internal/domain"
 )
 
 type OnboardingUsecase interface {
@@ -11,22 +11,24 @@ type OnboardingUsecase interface {
 	RemoveMe(ctx context.Context, userID int64) error
 }
 
-type CatalogLUsecase interface {
-	Dict(c tele.Context) error
-	List(c tele.Context) error
+type CatalogUsecase interface {
+	PublicDictionaries(ctx context.Context) ([]domain.Dictionary, error)
+	UserDictionaries(ctx context.Context, userID int64) ([]domain.Dictionary, error)
+	DictionaryDetails(ctx context.Context, userID int64, dictionaryID string) (*domain.DictionaryDetails, error)
 }
 
 type SubscriptionUsecase interface {
-	Subscribe(c tele.Context) error
-	Unsubscribe(c tele.Context) error
+	Subscribe(ctx context.Context, userID int64, dictionaryID string) error
+	Unsubscribe(ctx context.Context, userID int64, dictionaryID string) error
+	EnsureSubscribed(ctx context.Context, userID int64, dictionaryID string) error
 }
 
 type LearningUsecase interface {
-	Learn(c tele.Context) error
-	DecisionCallback(c tele.Context) error
+	Learn(ctx context.Context, userID int64, dictionaryID string) error
+	DecisionCallback(ctx context.Context, userID int64, decision string) error
 }
 
 type ReviewUsecase interface {
-	Review(c tele.Context) error
-	RateCallback(c tele.Context) error
+	Review(ctx context.Context, userID int64, dictionaryID string) error
+	RateCallback(ctx context.Context, userID int64, wordID string, rate int) error
 }

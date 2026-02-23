@@ -10,7 +10,9 @@ import (
 	"github.com/krezefal/eng-tg-bot/internal/repository/postgres"
 	"github.com/krezefal/eng-tg-bot/internal/resources"
 	"github.com/krezefal/eng-tg-bot/internal/transport/telegram"
-	"github.com/krezefal/eng-tg-bot/internal/usecase"
+	"github.com/krezefal/eng-tg-bot/internal/usecase/catalog"
+	"github.com/krezefal/eng-tg-bot/internal/usecase/onboarding"
+	"github.com/krezefal/eng-tg-bot/internal/usecase/subscription"
 )
 
 type App struct {
@@ -36,22 +38,20 @@ func New(ctx context.Context, logger *zerolog.Logger) (*App, error) {
 	logger.Info().Msg("telebot instance initialized")
 
 	userRepo := postgres.NewUserRepo(resources.Db, logger)
-	// TODO: uncomment
-	//dictRepo := repository.NewDictionaryRepo(resources.Db, logger)
-	//subsRepo := repository.NewSubscriptionRepo(resources.Db, logger)
+	dictRepo := postgres.NewDictionaryRepo(resources.Db, logger)
+	subsRepo := postgres.NewSubscriptionsRepo(resources.Db, logger)
 	//wordStateRepo := repository.NewWordStateRepo(resources.Db, logger)
 
-	onboardUC := usecase.NewOnboardingUsecase(userRepo, logger)
-	// TODO: uncomment
-	//catalogUC := usecase.NewCatalogUsecase(dictRepo, logger)
-	//subscUC := usecase.NewSubscriptionUsecase(userRepo, subsRepo, logger)
+	onboardUC := onboarding.NewUsecase(userRepo, logger)
+	catalogUC := catalog.NewUsecase(dictRepo, subsRepo, logger)
+	subscUC := subscription.NewUsecase(userRepo, dictRepo, subsRepo, logger)
 	//learningUC := usecase.NewLearningUsecase(subsRepo, wordStateRepo, logger)
 	//reviewUC := usecase.NewReviewUsecase(wordStateRepo, logger)
 
 	handlers := telegram.NewHandler(
 		onboardUC,
-		nil,
-		nil,
+		catalogUC,
+		subscUC,
 		nil,
 		nil,
 		logger,

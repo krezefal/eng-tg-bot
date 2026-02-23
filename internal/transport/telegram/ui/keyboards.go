@@ -4,57 +4,75 @@ import tele "gopkg.in/telebot.v4"
 
 const (
 	MainMenuDictText   = "📚 Словари (публичные)"
-	MainMenuMyDictText = "⭐ Мои словари"
-	MainMenuHelpText   = "❓ Помощь"
+	MainMenuMyDictText = "📖 Мои словари"
+	MainMenuHelpText   = "❔ Помощь"
 )
 
-func BuildMainMenuKeyboard() *tele.ReplyMarkup {
+func BuildMainMenuReplyKb() *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{ResizeKeyboard: true}
 
 	btnDict := markup.Text(MainMenuDictText)
-	btnMyDict := markup.Text(MainMenuMyDictText)
+	btnList := markup.Text(MainMenuMyDictText)
 	btnHelp := markup.Text(MainMenuHelpText)
 
 	markup.Reply(
 		markup.Row(btnDict),
-		markup.Row(btnMyDict),
+		markup.Row(btnList),
 		markup.Row(btnHelp),
 	)
 
 	return markup
 }
 
-func BuildRateKeyboard(wordID string) *tele.ReplyMarkup {
+func BuildPublicDictionaryInlineKb(dictionaryID string) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 
-	btn1 := markup.Data("Не помню", "rate", wordID+":1")
-	btn2 := markup.Data("Слабо помню", "rate", wordID+":2")
-	btn3 := markup.Data("Хорошо помню", "rate", wordID+":3")
-	btn4 := markup.Data("Запомнил!", "rate", wordID+":4")
-
-	btnStop := markup.Data("Закончили подход", "rate")
+	btnSubscribe := markup.Data("Подписаться", "dict_subscribe", dictionaryID)
+	btnDetails := markup.Data("Подробнее", "dict_details", dictionaryID)
 
 	markup.Inline(
-		markup.Row(btn4, btn3),
-		markup.Row(btn2, btn1),
-		markup.Row(btnStop),
+		markup.Row(btnSubscribe, btnDetails),
 	)
 
 	return markup
 }
 
-func BuildLearningKeyboard(wordID string) *tele.ReplyMarkup {
+func BuildUserDictionaryInlineKb(dictionaryID string) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 
-	btnAdd := markup.Data("➕ Добавить", "learn", wordID+":add")
-	btnBlock := markup.Data("⏭ Знаю! Не предлагать", "learn", wordID+":block")
-
-	btnStop := markup.Data("Закончили подход", "rate")
+	btnLearn := markup.Data("Учить", "dict_learn", dictionaryID)
+	btnReview := markup.Data("Повторить", "dict_review", dictionaryID)
+	btnUnsubscribe := markup.Data("Отписаться", "dict_unsubscribe", dictionaryID)
 
 	markup.Inline(
-		markup.Row(btnAdd),
-		markup.Row(btnBlock),
-		markup.Row(btnStop),
+		markup.Row(btnLearn),
+		markup.Row(btnReview, btnUnsubscribe),
+	)
+
+	return markup
+}
+
+func BuildDictionaryDetailsInlineKb(dictionaryID string) *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{}
+
+	btnSubscribe := markup.Data("Подписаться", "dict_subscribe", dictionaryID)
+	btnDetails := markup.Data("К словарям", "to_dicts")
+
+	markup.Inline(
+		markup.Row(btnSubscribe, btnDetails),
+	)
+
+	return markup
+}
+
+func BuildUnsubscribeConfirmInlineKb(dictionaryID string) *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{}
+
+	btnConfirm := markup.Data("Да", "dict_confirm_unsubscribe", dictionaryID)
+	btnReject := markup.Data("Нет", "dict_reject_unsubscribe", dictionaryID)
+
+	markup.Inline(
+		markup.Row(btnConfirm, btnReject),
 	)
 
 	return markup

@@ -27,7 +27,7 @@ func NewUserRepo(db *sql.DB, parentLogger *zerolog.Logger) *UserRepo {
 }
 
 func (r *UserRepo) CreateUser(ctx context.Context, id int64) error {
-	const op = "UserRepo.CreateUser"
+	const op = "CreateUser"
 
 	const query = `
 		INSERT INTO users (tg_id)
@@ -44,7 +44,7 @@ func (r *UserRepo) CreateUser(ctx context.Context, id int64) error {
 }
 
 func (r *UserRepo) DeleteUser(ctx context.Context, id int64) error {
-	const op = "UserRepo.DeleteUser"
+	const op = "DeleteUser"
 
 	const query = `
 		DELETE FROM users
