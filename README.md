@@ -30,13 +30,13 @@
 #### 1) Миграции
 
 ```bash
-./bin/migrator --up
+go build -o ./bin/migrator ./cmd/migrator && ./bin/migrator --up
 ```
 
 #### 2) Сиды
 
 ```bash
-./bin/seeder --up
+go build -o ./bin/seeder ./cmd/seeder && ./bin/seeder --up
 ```
 
 Опционально с указанием файла:
@@ -56,6 +56,8 @@ go build -o ./bin/bot ./cmd/bot && ./bin/bot
 ```bash
 go run ./cmd/bot/main.go
 ```
+
+См. Makefile для автоматизации сборки и запуска
 
 ## Юзкейсы
 
