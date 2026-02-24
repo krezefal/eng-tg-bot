@@ -30,13 +30,17 @@
 #### 1) Миграции
 
 ```bash
-go build -o ./bin/migrator ./cmd/migrator && ./bin/migrator --up
+mkdir -p ./bin
+go build -o ./bin/migrator ./cmd/migrator
+./bin/migrator --up
 ```
 
 #### 2) Сиды
 
 ```bash
-go build -o ./bin/seeder ./cmd/seeder && ./bin/seeder --up
+mkdir -p ./bin
+go build -o ./bin/seeder ./cmd/seeder
+./bin/seeder --up
 ```
 
 Опционально с указанием файла:
@@ -48,7 +52,9 @@ go build -o ./bin/seeder ./cmd/seeder && ./bin/seeder --up
 #### 3) Сам бот
 
 ```bash
-go build -o ./bin/bot ./cmd/bot && ./bin/bot
+mkdir -p ./bin
+go build -o ./bin/bot ./cmd/bot
+./bin/bot
 ```
 
 Или без сборки:
