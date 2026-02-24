@@ -1,31 +1,31 @@
-# Telegram-bot for English
+# Telegram Bot for English
 
 Телеграм-бот для изучения английских слов по методу интерваьлных повторений.  
 
-### Стек
+## Стек
 
 - Go
 - PostgreSQL
 - `gopkg.in/telebot.v4`
 - `golang-migrate` (миграции)
 
-### Переменные окружения
+## Переменные окружения
 
 Используется `.env` - подхватывается автоматически.
 
-#### Required
+### Required
 
 - `TOKEN` — токен Telegram-бота
 - `DB_DSN` — строка подключения к PostgreSQL
 
-#### Optional
+### Optional
 
 - `POLLING_TIMEOUT` — timeout long polling, по умолчанию `10s`
 - `DEBUG` — `true/false`, по умолчанию `false`
 - `LOG_FORMAT` — `console` или `json`, по умолчанию `console`
 - `TIME_FORMAT` — формат времени в console-логах, по умолчанию `2006-01-02 15:04:05`
 
-### Сборка и запуск
+## Сборка и запуск
 
 #### 1) Миграции
 
@@ -57,7 +57,7 @@ go build -o ./bin/bot ./cmd/bot && ./bin/bot
 go run ./cmd/bot/main.go
 ```
 
-### Юзкейсы
+## Юзкейсы
 
 - Onboarding:
   - `/start` — регистрация пользователя (идемпотентно), приветствие
@@ -85,7 +85,7 @@ go run ./cmd/bot/main.go
 - Review:
   - WIP
 
-### Примечания
+## Примечания
 
 - seeder выполняет операции идемпотентно.
 - migrator выполняет операции идемпотентно.
