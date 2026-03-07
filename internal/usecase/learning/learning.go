@@ -11,7 +11,6 @@ import (
 )
 
 type Usecase struct {
-	userRepo      UserRepo
 	dictRepo      DictionaryRepo
 	subsRepo      SubscriptionsRepo
 	wordStateRepo WordStateRepo
@@ -27,7 +26,6 @@ type pendingWord struct {
 }
 
 func NewUsecase(
-	userRepo UserRepo,
 	dictRepo DictionaryRepo,
 	subsRepo SubscriptionsRepo,
 	wordStateRepo WordStateRepo,
@@ -40,7 +38,6 @@ func NewUsecase(
 	logger := parentLogger.With().Str("component", "learning_usecase").Logger()
 
 	return &Usecase{
-		userRepo:      userRepo,
 		dictRepo:      dictRepo,
 		subsRepo:      subsRepo,
 		wordStateRepo: wordStateRepo,
@@ -145,9 +142,6 @@ func (u *Usecase) startLearning(
 	if err = u.subsRepo.MarkLearningStarted(ctx, userID, dictionaryID); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	if err = u.userRepo.SetActiveDictionaryID(ctx, userID, dictionaryID); err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
 
 	return word, nil
 }
@@ -164,24 +158,10 @@ func (u *Usecase) BlockCurrentWord(ctx context.Context, userID int64) (*domain.L
 	return u.applyDecision(ctx, userID, domain.UserWordStatusBlocked, op)
 }
 
-func (u *Usecase) ActiveDictionaryID(ctx context.Context, userID int64) (string, error) {
-	const op = "ActiveDictionaryID"
-
-	dictionaryID, err := u.userRepo.GetActiveDictionaryID(ctx, userID)
-	if err != nil {
-		return "", fmt.Errorf("%s: %w", op, err)
-	}
-
-	return dictionaryID, nil
-}
-
 func (u *Usecase) Back(ctx context.Context, userID int64) error {
 	const op = "Back"
 
 	u.clearPending(userID)
-	if err := u.userRepo.ClearActiveDictionaryID(ctx, userID); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
 
 	u.logger.Debug().
 		Int64("user_id", userID).

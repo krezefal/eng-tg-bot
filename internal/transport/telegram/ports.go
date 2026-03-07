@@ -28,23 +28,21 @@ type LearningUsecase interface {
 	LearnByDictionaryID(ctx context.Context, userID int64, dictionaryID string) (*domain.LearningWord, error)
 	AddCurrentWord(ctx context.Context, userID int64) (*domain.LearningWord, error)
 	BlockCurrentWord(ctx context.Context, userID int64) (*domain.LearningWord, error)
-	ActiveDictionaryID(ctx context.Context, userID int64) (string, error)
 	Back(ctx context.Context, userID int64) error
 }
 
 type ReviewUsecase interface {
 	PrepareByDictionaryNumber(ctx context.Context, userID int64, number int) (string, error)
 	PrepareByDictionaryID(ctx context.Context, userID int64, dictionaryID string) error
-	ActiveDictionaryID(ctx context.Context, userID int64) (string, error)
-	StartDueRound(ctx context.Context, userID int64) (*domain.ReviewWord, string, error)
+	StartDueRound(ctx context.Context, userID int64, dictionaryID string) (*domain.ReviewWord , error)
 	StartForceRound(ctx context.Context, userID int64, dictionaryID string) (*domain.ReviewWord, error)
 	RateCurrent(ctx context.Context, userID int64, grade int) (*domain.ReviewWord, string, error)
 	Stop(ctx context.Context, userID int64) error
 }
 
-// TODO: move ActiveDictionaryID from 2 usecases above to this one.
-//type ActiveDictionaryUsecase interface {
-//	GetActiveDictionaryID(ctx context.Context, userID int64) (string, error)
-//	SetActiveDictionaryID(ctx context.Context, userID int64, dictionaryID string) error
-//	ClearActiveDictionaryID(ctx context.Context, userID int64) error
-//}
+// TODO: move ActiveDictionaryID from 2 usecases above to this one. [x]
+type ActiveDictionaryUsecase interface {
+	GetActiveDictionaryID(ctx context.Context, userID int64) (string, error)
+	SetActiveDictionaryID(ctx context.Context, userID int64, dictionaryID string) error
+	ClearActiveDictionaryID(ctx context.Context, userID int64) error
+}

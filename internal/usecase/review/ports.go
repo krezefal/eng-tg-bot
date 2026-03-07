@@ -7,12 +7,6 @@ import (
 	"github.com/krezefal/eng-tg-bot/internal/domain"
 )
 
-type UserRepo interface {
-	SetActiveDictionaryID(ctx context.Context, userID int64, dictionaryID string) error
-	GetActiveDictionaryID(ctx context.Context, userID int64) (string, error)
-	ClearActiveDictionaryID(ctx context.Context, userID int64) error
-}
-
 type DictionaryRepo interface {
 	ExistsByID(ctx context.Context, dictionaryID string) (bool, error)
 }

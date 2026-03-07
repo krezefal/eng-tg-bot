@@ -1,6 +1,7 @@
 .env
 .env.local
 AGENT.md
+TODOZhuk.md
 
 .gomodcache/
 .gocache/

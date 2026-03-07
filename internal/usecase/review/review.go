@@ -12,7 +12,6 @@ import (
 )
 
 type Usecase struct {
-	userRepo       UserRepo
 	dictionaryRepo DictionaryRepo
 	subsRepo       SubscriptionsRepo
 	wordStateRepo  WordsStateRepo
@@ -29,7 +28,6 @@ type reviewSession struct {
 }
 
 func NewUsecase(
-	userRepo UserRepo,
 	dictionaryRepo DictionaryRepo,
 	subsRepo SubscriptionsRepo,
 	wordStateRepo WordsStateRepo,
@@ -42,7 +40,6 @@ func NewUsecase(
 	logger := parentLogger.With().Str("component", "review_usecase").Logger()
 
 	return &Usecase{
-		userRepo:       userRepo,
 		dictionaryRepo: dictionaryRepo,
 		subsRepo:       subsRepo,
 		wordStateRepo:  wordStateRepo,
@@ -71,9 +68,6 @@ func (u *Usecase) PrepareByDictionaryNumber(
 	}
 
 	dictionaryID := dictionaries[number-1].ID
-	if err = u.userRepo.SetActiveDictionaryID(ctx, userID, dictionaryID); err != nil {
-		return "", fmt.Errorf("%s: %w", op, err)
-	}
 
 	u.clearSession(userID)
 
@@ -155,51 +149,39 @@ func (u *Usecase) prepareByDictionaryIDInner(
 		return domain.ErrEmptyReviewWordsList
 	}
 
-	if err = u.userRepo.SetActiveDictionaryID(ctx, userID, dictionaryID); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
 	u.clearSession(userID)
 
 	return nil
 }
 
-func (u *Usecase) StartDueRound(ctx context.Context, userID int64) (*domain.ReviewWord, string, error) {
+func (u *Usecase) StartDueRound(ctx context.Context, userID int64, dictionaryID string) (*domain.ReviewWord /*string,*/, error) {
 	const op = "StartDueRound"
-
-	dictionaryID, err := u.userRepo.GetActiveDictionaryID(ctx, userID)
-	if err != nil {
-		return nil, "", fmt.Errorf("%s: %w", op, err)
-	}
-	if dictionaryID == "" {
-		return nil, "", domain.ErrReviewNotStarted
-	}
 
 	hasReviewWords, err := u.wordStateRepo.HasReviewWords(ctx, userID, dictionaryID)
 	if err != nil {
-		return nil, dictionaryID, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	if !hasReviewWords {
-		return nil, dictionaryID, domain.ErrEmptyReviewWordsList
+		return nil, domain.ErrEmptyReviewWordsList
 	}
 
 	now := time.Now()
 	words, err := u.wordStateRepo.ListDueReviewWords(ctx, userID, dictionaryID, now)
 	if err != nil {
-		return nil, dictionaryID, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	if len(words) == 0 {
-		return nil, dictionaryID, domain.ErrNoWordsDueForReview
+		return nil, domain.ErrNoWordsDueForReview
 	}
 
 	u.setSession(userID, dictionaryID, words)
 
 	nextW, err := u.nextWord(userID)
 	if err != nil {
-		return nil, dictionaryID, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return nextW, dictionaryID, nil
+	return nextW, nil
 }
 
 func (u *Usecase) RateCurrent(ctx context.Context, userID int64, grade int) (*domain.ReviewWord, string, error) {
@@ -247,23 +229,10 @@ func (u *Usecase) Stop(ctx context.Context, userID int64) error {
 	const op = "Stop"
 
 	u.clearSession(userID)
-	if err := u.userRepo.ClearActiveDictionaryID(ctx, userID); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
 
 	return nil
 }
 
-func (u *Usecase) ActiveDictionaryID(ctx context.Context, userID int64) (string, error) {
-	const op = "ActiveDictionaryID"
-
-	dictionaryID, err := u.userRepo.GetActiveDictionaryID(ctx, userID)
-	if err != nil {
-		return "", fmt.Errorf("%s: %w", op, err)
-	}
-
-	return dictionaryID, nil
-}
 
 func (u *Usecase) setSession(userID int64, dictionaryID string, words []*domain.ReviewWord) {
 	u.sessionMu.Lock()

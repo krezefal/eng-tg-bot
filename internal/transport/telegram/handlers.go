@@ -21,15 +21,17 @@ var _ Handlers = (*BotHandlers)(nil)
 
 // TODO: add recovering from panics somewhere
 type BotHandlers struct {
-	onboardUC OnboardingUsecase
-	catalogUC CatalogUsecase
-	subsUC    SubscriptionUsecase
-	learnUC   LearningUsecase
-	reviewUC  ReviewUsecase
-	logger    *zerolog.Logger
+	activeDictUC ActiveDictionaryUsecase
+	onboardUC    OnboardingUsecase
+	catalogUC    CatalogUsecase
+	subsUC       SubscriptionUsecase
+	learnUC      LearningUsecase
+	reviewUC     ReviewUsecase
+	logger       *zerolog.Logger
 }
 
 func NewHandler(
+	activeDictUC ActiveDictionaryUsecase,
 	onboardUC OnboardingUsecase,
 	catalogUC CatalogUsecase,
 	subsUC SubscriptionUsecase,
@@ -40,7 +42,9 @@ func NewHandler(
 	if parentLogger == nil {
 		panic("logger cannot be nil")
 	}
-
+	if activeDictUC == nil {
+		panic("ActiveDictionaryUsecase cannot be nil")
+	}
 	if onboardUC == nil {
 		panic("OnboardingUsecase cannot be nil")
 	}
@@ -60,12 +64,13 @@ func NewHandler(
 	logger := parentLogger.With().Str("component", "telegram_handler").Logger()
 
 	return &BotHandlers{
-		onboardUC: onboardUC,
-		catalogUC: catalogUC,
-		subsUC:    subsUC,
-		learnUC:   learnUC,
-		reviewUC:  reviewUC,
-		logger:    &logger,
+		activeDictUC: activeDictUC,
+		onboardUC:    onboardUC,
+		catalogUC:    catalogUC,
+		subsUC:       subsUC,
+		learnUC:      learnUC,
+		reviewUC:     reviewUC,
+		logger:       &logger,
 	}
 }
 
@@ -588,6 +593,18 @@ func (h *BotHandlers) LearnByDictNum(c tele.Context) error {
 
 		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
 	}
+	//TODO run method set active dict Id [x]
+	if err := h.activeDictUC.SetActiveDictionaryID(ctx, userID, dictionaryID); err != nil {
+		mapped := mapper.MapLearningErrorToUI(err)
+		if mapped.State() != mapper.LearningUIUnknown {
+			ctxLogger.Debug().
+				Err(err).
+				Str("dictionary_id", dictionaryID).
+				Msgf("%s handled with mapped learning error", op)
+
+			return mapper.SendLearningMappedError(c, mapped, dictionaryID)
+		}
+	}
 
 	return c.Send(
 		ui.FormatLearningWordCard(*word),
@@ -627,6 +644,19 @@ func (h *BotHandlers) LearnByDictID(c tele.Context) error {
 		ctxLogger.Error().Msgf("%s: dictionary_id is empty", op)
 
 		return c.Send(ui.DictionaryNotFoundMsg, ui.BuildMainMenuReplyKb())
+	}
+
+	//TODO run method set Active Dict ID [x]
+	if err := h.activeDictUC.SetActiveDictionaryID(ctx, userID, dictionaryID); err != nil {
+		mapped := mapper.MapLearningErrorToUI(err)
+		if mapped.State() != mapper.LearningUIUnknown {
+			ctxLogger.Debug().
+				Err(err).
+				Str("dictionary_id", dictionaryID).
+				Msgf("%s handled with mapped learning error", op)
+
+			return mapper.SendLearningMappedError(c, mapped, dictionaryID)
+		}
 	}
 
 	word, err := h.learnUC.LearnByDictionaryID(ctx, userID, dictionaryID)
@@ -677,6 +707,19 @@ func (h *BotHandlers) LearningAction(c tele.Context) error {
 		Logger()
 
 	ctxLogger.Debug().Msgf("handling %s", op)
+	//gettin' dict ID for further operations [x]
+	dictionaryID, err := h.activeDictUC.GetActiveDictionaryID(ctx, userID)
+	if err != nil {
+		ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+	}
+	if dictionaryID == "" {
+		// TODO: alert here
+		ctxLogger.Error().Err(err).Msgf("%s: unable to define active dictionary", op)
+
+		return c.Send(ui.ActiveDictMissingMsg, ui.BuildMainMenuReplyKb())
+	}
 
 	switch c.Text() {
 	case ui.LearnAddText:
@@ -686,18 +729,6 @@ func (h *BotHandlers) LearningAction(c tele.Context) error {
 	case ui.LearnReviewText:
 		// TODO: fix getting dictionary_id from active dictionary and then
 		// setting it again in h.reviewUC.PrepareByDictionaryID
-		dictionaryID, err := h.learnUC.ActiveDictionaryID(ctx, userID)
-		if err != nil {
-			ctxLogger.Error().Err(err).Msgf("%s failed", op)
-
-			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
-		}
-		if dictionaryID == "" {
-			// TODO: alert here
-			ctxLogger.Error().Err(err).Msgf("%s: unable to define active dictionary", op)
-
-			return c.Send(ui.ActiveDictMissingMsg, ui.BuildMainMenuReplyKb())
-		}
 
 		if err = h.reviewUC.PrepareByDictionaryID(ctx, userID, dictionaryID); err != nil {
 			mapped := mapper.MapReviewErrorToUI(err)
@@ -723,6 +754,18 @@ func (h *BotHandlers) LearningAction(c tele.Context) error {
 
 			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
 		}
+		//TODO: run method Clear Active Dict ID [x]
+		if err := h.activeDictUC.ClearActiveDictionaryID(ctx, userID); err != nil {
+			mapped := mapper.MapLearningErrorToUI(err)
+			if mapped.State() != mapper.LearningUIUnknown {
+				ctxLogger.Debug().
+					Err(err).
+					Str("dictionary_id", dictionaryID).
+					Msgf("%s handled with mapped lerning error", op)
+
+				return mapper.SendLearningMappedError(c, mapped, dictionaryID)
+			}
+		}
 
 		return c.Send(ui.ToMainMenuMsg, ui.BuildMainMenuReplyKb())
 	default:
@@ -740,7 +783,7 @@ func (h *BotHandlers) handleLearningDecision(
 ) error {
 	word, err := decisionFn(ctx, userID)
 	if err != nil {
-		dictionaryID, errActDict := h.learnUC.ActiveDictionaryID(ctx, userID)
+		dictionaryID, errActDict := h.activeDictUC.GetActiveDictionaryID(ctx, userID)
 		if errActDict != nil {
 			ctxLogger.Error().Err(errActDict).Msgf("%s failed", op)
 
@@ -836,6 +879,18 @@ func (h *BotHandlers) ReviewByDictNum(c tele.Context) error {
 		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
 	}
 
+	if err := h.activeDictUC.SetActiveDictionaryID(ctx, userID, dictionaryID); err != nil {
+		mapped := mapper.MapLearningErrorToUI(err)
+		if mapped.State() != mapper.LearningUIUnknown {
+			ctxLogger.Debug().
+				Err(err).
+				Str("dictionary_id", dictionaryID).
+				Msgf("%s handled with mapped review error", op)
+
+			return mapper.SendLearningMappedError(c, mapped, dictionaryID)
+		}
+	}
+
 	return c.Send(ui.ReviewIntroMsg, ui.BuildReviewIntroReplyKb())
 }
 
@@ -886,6 +941,18 @@ func (h *BotHandlers) ReviewByDictID(c tele.Context) error {
 
 		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
 	}
+	//TODO set [x]
+	if err := h.activeDictUC.SetActiveDictionaryID(ctx, userID, dictionaryID); err != nil {
+		mapped := mapper.MapLearningErrorToUI(err)
+		if mapped.State() != mapper.LearningUIUnknown {
+			ctxLogger.Debug().
+				Err(err).
+				Str("dictionary_id", dictionaryID).
+				Msgf("%s handled with mapped review error", op)
+
+			return mapper.SendLearningMappedError(c, mapped, dictionaryID)
+		}
+	}
 
 	return c.Send(ui.ReviewIntroMsg, ui.BuildReviewIntroReplyKb())
 }
@@ -913,7 +980,7 @@ func (h *BotHandlers) ReviewForce(c tele.Context) error {
 
 	ctxLogger.Debug().Msgf("handling %s", op)
 
-	dictionaryID, err := h.reviewUC.ActiveDictionaryID(ctx, userID)
+	dictionaryID, err := h.activeDictUC.GetActiveDictionaryID(ctx, userID)
 	if err != nil {
 		ctxLogger.Error().Err(err).Msgf("%s failed", op)
 
@@ -999,6 +1066,18 @@ func (h *BotHandlers) ReviewForceByCallback(c tele.Context) error {
 
 		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
 	}
+	//TODO [x]
+	if err := h.activeDictUC.SetActiveDictionaryID(ctx, userID, dictionaryID); err != nil {
+		mapped := mapper.MapLearningErrorToUI(err)
+		if mapped.State() != mapper.LearningUIUnknown {
+			ctxLogger.Debug().
+				Err(err).
+				Str("dictionary_id", dictionaryID).
+				Msgf("%s handled with mapped review error", op)
+
+			return mapper.SendLearningMappedError(c, mapped, dictionaryID)
+		}
+	}
 
 	return c.Send(
 		ui.FormatReviewWordCard(word),
@@ -1031,10 +1110,22 @@ func (h *BotHandlers) ReviewAction(c tele.Context) error {
 		Logger()
 
 	ctxLogger.Debug().Msgf("handling %s", op)
+	//TODO Get [x]
+	dictionaryID, err := h.activeDictUC.GetActiveDictionaryID(ctx, userID)
+	if err != nil {
+		ctxLogger.Error().Err(err).Msgf("%s failed", op)
+
+		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+	}
+	if dictionaryID == "" {
+		ctxLogger.Debug().Msgf("%s: active dictionary is empty", op)
+
+		return c.Send(ui.ActiveDictMissingMsg, ui.BuildMainMenuReplyKb())
+	}
 
 	switch c.Text() {
 	case ui.ReviewStartText:
-		word, dictionaryID, err := h.reviewUC.StartDueRound(ctx, userID)
+		word, err := h.reviewUC.StartDueRound(ctx, userID, dictionaryID)
 		if err != nil {
 			mapped := mapper.MapReviewErrorToUI(err)
 			if mapped.State() != mapper.ReviewUIUnknown {
@@ -1065,6 +1156,19 @@ func (h *BotHandlers) ReviewAction(c tele.Context) error {
 			ctxLogger.Error().Err(err).Msgf("%s failed", op)
 
 			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
+		}
+		//TODO clear active dict ID [x]
+
+		if err := h.activeDictUC.ClearActiveDictionaryID(ctx, userID); err != nil {
+			mapped := mapper.MapLearningErrorToUI(err)
+			if mapped.State() != mapper.LearningUIUnknown {
+				ctxLogger.Debug().
+					Err(err).
+					Str("dictionary_id", dictionaryID).
+					Msgf("%s handled with mapped lerning error", op)
+
+				return mapper.SendLearningMappedError(c, mapped, dictionaryID)
+			}
 		}
 
 		return c.Send(ui.ToMainMenuMsg, ui.BuildMainMenuReplyKb())
