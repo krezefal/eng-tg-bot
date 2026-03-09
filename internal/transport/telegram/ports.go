@@ -34,13 +34,13 @@ type LearningUsecase interface {
 type ReviewUsecase interface {
 	PrepareByDictionaryNumber(ctx context.Context, userID int64, number int) (string, error)
 	PrepareByDictionaryID(ctx context.Context, userID int64, dictionaryID string) error
-	StartDueRound(ctx context.Context, userID int64, dictionaryID string) (*domain.ReviewWord , error)
+	StartDueRound(ctx context.Context, userID int64, dictionaryID string) (*domain.ReviewWord, error)
 	StartForceRound(ctx context.Context, userID int64, dictionaryID string) (*domain.ReviewWord, error)
 	RateCurrent(ctx context.Context, userID int64, grade int) (*domain.ReviewWord, string, error)
 	Stop(ctx context.Context, userID int64) error
 }
 
-// TODO: move ActiveDictionaryID from 2 usecases above to this one. [x]
+// TODO: move ActiveDictionaryID from 2 usecases above to this one. [x].
 type ActiveDictionaryUsecase interface {
 	GetActiveDictionaryID(ctx context.Context, userID int64) (string, error)
 	SetActiveDictionaryID(ctx context.Context, userID int64, dictionaryID string) error

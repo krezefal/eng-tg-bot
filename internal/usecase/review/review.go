@@ -6,9 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
-
 	"github.com/krezefal/eng-tg-bot/internal/domain"
+	"github.com/rs/zerolog"
 )
 
 type Usecase struct {
@@ -226,13 +225,12 @@ func (u *Usecase) RateCurrent(ctx context.Context, userID int64, grade int) (*do
 }
 
 func (u *Usecase) Stop(ctx context.Context, userID int64) error {
-	const op = "Stop"
+	//	const op = "Stop"
 
 	u.clearSession(userID)
 
 	return nil
 }
-
 
 func (u *Usecase) setSession(userID int64, dictionaryID string, words []*domain.ReviewWord) {
 	u.sessionMu.Lock()

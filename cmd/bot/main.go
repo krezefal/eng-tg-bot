@@ -15,7 +15,7 @@ const serviceName = "eng-tg-bot"
 // TODO: logger level audit + remove extra logs
 // TODO: mark places for alerts
 // TODO: add panics handling
-// TODO: adjust error logging msg in transport layer
+// TODO: adjust error logging msg in transport layer.
 func main() {
 	ctx := context.Background()
 	zerolog := log.For(serviceName)

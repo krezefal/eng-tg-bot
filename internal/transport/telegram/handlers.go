@@ -7,19 +7,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/krezefal/eng-tg-bot/internal/domain"
 	"github.com/krezefal/eng-tg-bot/internal/transport/telegram/mapper"
+	"github.com/krezefal/eng-tg-bot/internal/transport/telegram/ui"
 	"github.com/rs/zerolog"
 	tele "gopkg.in/telebot.v4"
-
-	"github.com/krezefal/eng-tg-bot/internal/domain"
-	"github.com/krezefal/eng-tg-bot/internal/transport/telegram/ui"
 )
 
 const handlerCtxTimeout = 5 * time.Second
 
 var _ Handlers = (*BotHandlers)(nil)
 
-// TODO: add recovering from panics somewhere
+// TODO: add recovering from panics somewhere.
 type BotHandlers struct {
 	activeDictUC ActiveDictionaryUsecase
 	onboardUC    OnboardingUsecase
@@ -593,7 +592,7 @@ func (h *BotHandlers) LearnByDictNum(c tele.Context) error {
 
 		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
 	}
-	//TODO run method set active dict Id [x]
+	// TODO run method set active dict Id [x]
 	if err := h.activeDictUC.SetActiveDictionaryID(ctx, userID, dictionaryID); err != nil {
 		mapped := mapper.MapLearningErrorToUI(err)
 		if mapped.State() != mapper.LearningUIUnknown {
@@ -646,7 +645,7 @@ func (h *BotHandlers) LearnByDictID(c tele.Context) error {
 		return c.Send(ui.DictionaryNotFoundMsg, ui.BuildMainMenuReplyKb())
 	}
 
-	//TODO run method set Active Dict ID [x]
+	// TODO run method set Active Dict ID [x]
 	if err := h.activeDictUC.SetActiveDictionaryID(ctx, userID, dictionaryID); err != nil {
 		mapped := mapper.MapLearningErrorToUI(err)
 		if mapped.State() != mapper.LearningUIUnknown {
@@ -707,7 +706,7 @@ func (h *BotHandlers) LearningAction(c tele.Context) error {
 		Logger()
 
 	ctxLogger.Debug().Msgf("handling %s", op)
-	//gettin' dict ID for further operations [x]
+	// gettin' dict ID for further operations [x]
 	dictionaryID, err := h.activeDictUC.GetActiveDictionaryID(ctx, userID)
 	if err != nil {
 		ctxLogger.Error().Err(err).Msgf("%s failed", op)
@@ -941,7 +940,7 @@ func (h *BotHandlers) ReviewByDictID(c tele.Context) error {
 
 		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
 	}
-	//TODO set [x]
+	// TODO set [x]
 	if err := h.activeDictUC.SetActiveDictionaryID(ctx, userID, dictionaryID); err != nil {
 		mapped := mapper.MapLearningErrorToUI(err)
 		if mapped.State() != mapper.LearningUIUnknown {
@@ -1066,7 +1065,7 @@ func (h *BotHandlers) ReviewForceByCallback(c tele.Context) error {
 
 		return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
 	}
-	//TODO [x]
+	// TODO [x]
 	if err := h.activeDictUC.SetActiveDictionaryID(ctx, userID, dictionaryID); err != nil {
 		mapped := mapper.MapLearningErrorToUI(err)
 		if mapped.State() != mapper.LearningUIUnknown {
@@ -1110,7 +1109,7 @@ func (h *BotHandlers) ReviewAction(c tele.Context) error {
 		Logger()
 
 	ctxLogger.Debug().Msgf("handling %s", op)
-	//TODO Get [x]
+	// TODO Get [x]
 	dictionaryID, err := h.activeDictUC.GetActiveDictionaryID(ctx, userID)
 	if err != nil {
 		ctxLogger.Error().Err(err).Msgf("%s failed", op)
@@ -1157,7 +1156,7 @@ func (h *BotHandlers) ReviewAction(c tele.Context) error {
 
 			return c.Send(ui.InternalErrorMsg, ui.BuildMainMenuReplyKb())
 		}
-		//TODO clear active dict ID [x]
+		// TODO clear active dict ID [x]
 
 		if err := h.activeDictUC.ClearActiveDictionaryID(ctx, userID); err != nil {
 			mapped := mapper.MapLearningErrorToUI(err)

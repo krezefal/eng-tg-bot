@@ -11,11 +11,10 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	_ "github.com/lib/pq"
-	"github.com/subosito/gotenv"
-
 	migfs "github.com/krezefal/eng-tg-bot/migrations"
 	"github.com/krezefal/eng-tg-bot/pkg/log"
+	_ "github.com/lib/pq"
+	"github.com/subosito/gotenv"
 )
 
 const serviceName = "migrator"

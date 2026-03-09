@@ -4,9 +4,8 @@ import (
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
-	"github.com/subosito/gotenv"
-
 	"github.com/krezefal/eng-tg-bot/pkg/log"
+	"github.com/subosito/gotenv"
 )
 
 type Env struct {

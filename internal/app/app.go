@@ -4,9 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rs/zerolog"
-	tele "gopkg.in/telebot.v4"
-
 	"github.com/krezefal/eng-tg-bot/internal/repository/postgres"
 	"github.com/krezefal/eng-tg-bot/internal/resources"
 	"github.com/krezefal/eng-tg-bot/internal/transport/telegram"
@@ -16,6 +13,8 @@ import (
 	"github.com/krezefal/eng-tg-bot/internal/usecase/onboarding"
 	"github.com/krezefal/eng-tg-bot/internal/usecase/review"
 	"github.com/krezefal/eng-tg-bot/internal/usecase/subscription"
+	"github.com/rs/zerolog"
+	tele "gopkg.in/telebot.v4"
 )
 
 type App struct {

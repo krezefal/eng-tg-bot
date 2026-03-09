@@ -1,6 +1,6 @@
 package ui
 
-// Onboarding
+// Onboarding.
 const WelcomeMsg = `Привет, меня зовут Ингли, я твой помощник в изучении английских слов! 👾
 
 Я работаю по интервальным повторениям — просто и эффективно. Подписывайся на словари, учи слова, а я как твой бортовой компьютер буду вычислять усвоение материала: сложные слова буду показывать чаще, и про лёгкие тоже не забудем 😉
@@ -19,7 +19,7 @@ const HelpMsg = `
 
 const RemoveMsg = `Все данные удалены 🫥`
 
-// Catalog
+// Catalog.
 const (
 	PublicDictionariesEmptyMsg  = `Пока нет опубликованных словарей 💤`
 	UserDictionariesEmptyMsg    = `У тебя нет добавленных словарей 💤`
@@ -27,7 +27,7 @@ const (
 	UserDictionariesHeaderMsg   = `Твои словари:`
 )
 
-// Subscription
+// Subscription.
 const (
 	DictionarySubscribedMsg           = `Добавил в "Мои словари" ✅`
 	DictionaryAlreadySubscribedMsg    = `Ты уже добавлял этот словарь 👌`
@@ -38,7 +38,7 @@ const (
 	DictionaryNotFoundMsg             = `Словарь не найден 🧐`
 )
 
-// Learning
+// Learning.
 const (
 	LearnUsageMsg      = `Использование: /learn <номер словаря из списка>`
 	LearnNotStartedMsg = `Сначала открой обучение через /learn <номер словаря> или кнопку «Учить» у себя в словарях`
@@ -49,7 +49,7 @@ const (
 `
 )
 
-// Review
+// Review.
 const (
 	ReviewUsageMsg          = `Использование: /review <номер словаря из списка>`
 	ReviewIntroMsg          = `🕹️ Я начну показывать слова из этого словаря, которые мы уже рассматривали — отмечай, насколько хорошо их ты помнишь, нажимая на кнопки внизу экрана`
@@ -58,7 +58,7 @@ const (
 	ReviewCompletedMsg      = `Ты повторил все изученные слова из этого словаря 🥳`
 )
 
-// Other messages
+// Other messages.
 const (
 	ToMainMenuMsg = "⏮️ Возврат в меню"
 

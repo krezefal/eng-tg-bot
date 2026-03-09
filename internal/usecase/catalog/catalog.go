@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rs/zerolog"
-
 	"github.com/krezefal/eng-tg-bot/internal/domain"
+	"github.com/rs/zerolog"
 )
 
 type CatalogUsecase struct {

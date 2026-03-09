@@ -2,7 +2,7 @@ package ui
 
 import tele "gopkg.in/telebot.v4"
 
-// Only reply btns contain emoji
+// Only reply btns contain emoji.
 const (
 	MainMenuDictText   = "📚 Словари (публичные)"
 	MainMenuMyDictText = "📖 Мои словари"

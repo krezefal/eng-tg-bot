@@ -14,17 +14,17 @@ func FormatDictionaryCard(dict domain.Dictionary) string {
 	if title == "" {
 		title = "Без названия"
 	}
-	b.WriteString(fmt.Sprintf("📘 <u>%s</u>\n", html.EscapeString(title)))
+	fmt.Fprintf(&b, "📘 <u>%s</u>\n", html.EscapeString(title))
 
 	if strings.TrimSpace(dict.Description) != "" {
-		b.WriteString(fmt.Sprintf("Описание: %s\n", html.EscapeString(dict.Description)))
+		fmt.Fprintf(&b, "Описание: %s\n", html.EscapeString(dict.Description))
 	}
 
 	if strings.TrimSpace(dict.Author) != "" {
-		b.WriteString(fmt.Sprintf("Автор: %s\n", html.EscapeString(dict.Author)))
+		fmt.Fprintf(&b, "Автор: %s\n", html.EscapeString(dict.Author))
 	}
 
-	b.WriteString(fmt.Sprintf("Тип: %s", html.EscapeString(dict.Mode.HumanReadable())))
+	fmt.Fprintf(&b, "Тип: %s", html.EscapeString(dict.Mode.HumanReadable()))
 
 	return b.String()
 }
@@ -35,13 +35,13 @@ func FormatSubscribedDictionaryCard(number int, dict domain.Dictionary) string {
 	if title == "" {
 		title = "Без названия"
 	}
-	b.WriteString(fmt.Sprintf("%d. 📘 <u>%s</u>\n", number, html.EscapeString(title)))
+	fmt.Fprintf(&b, "%d. 📘 <u>%s</u>\n", number, html.EscapeString(title))
 
 	if strings.TrimSpace(dict.Author) != "" {
-		b.WriteString(fmt.Sprintf("Автор: %s\n", html.EscapeString(dict.Author)))
+		fmt.Fprintf(&b, "Автор: %s\n", html.EscapeString(dict.Author))
 	}
 
-	b.WriteString(fmt.Sprintf("Тип: %s", html.EscapeString(dict.Mode.HumanReadable())))
+	fmt.Fprintf(&b, "Тип: %s", html.EscapeString(dict.Mode.HumanReadable()))
 
 	return b.String()
 }
@@ -52,14 +52,14 @@ func FormatDictionaryDetails(dict domain.Dictionary, words []domain.DictionaryWo
 	if title == "" {
 		title = "Без названия"
 	}
-	b.WriteString(fmt.Sprintf("📘 <u>%s</u>\n\n", html.EscapeString(title)))
+	fmt.Fprintf(&b, "📘 <u>%s</u>\n\n", html.EscapeString(title))
 
 	if strings.TrimSpace(dict.Description) != "" {
-		b.WriteString(fmt.Sprintf("Описание: %s\n", html.EscapeString(dict.Description)))
+		fmt.Fprintf(&b, "Описание: %s\n", html.EscapeString(dict.Description))
 	}
 
 	if strings.TrimSpace(dict.Author) != "" {
-		b.WriteString(fmt.Sprintf("Автор: %s\n", html.EscapeString(dict.Author)))
+		fmt.Fprintf(&b, "Автор: %s\n", html.EscapeString(dict.Author))
 	}
 
 	dictModeHint := ""
@@ -70,8 +70,8 @@ func FormatDictionaryDetails(dict domain.Dictionary, words []domain.DictionaryWo
 		dictModeHint = "новые слова приходят тебе по расписанию, заданному автором"
 	}
 
-	b.WriteString(fmt.Sprintf("Тип: %s — %s\n\n",
-		html.EscapeString(dict.Mode.HumanReadable()), html.EscapeString(dictModeHint)))
+	fmt.Fprintf(&b, "Тип: %s — %s\n\n",
+		html.EscapeString(dict.Mode.HumanReadable()), html.EscapeString(dictModeHint))
 
 	if len(words) == 0 {
 		b.WriteString("В этом словаре пока нет слов 💤")
@@ -81,10 +81,8 @@ func FormatDictionaryDetails(dict domain.Dictionary, words []domain.DictionaryWo
 
 	b.WriteString("Несколько слов отсюда:\n")
 	for _, w := range words {
-		b.WriteString(
-			fmt.Sprintf("• %s — <tg-spoiler>%s</tg-spoiler>\n",
-				html.EscapeString(w.Spelling), html.EscapeString(w.RUTranslation)),
-		)
+		fmt.Fprintf(&b, "• %s — <tg-spoiler>%s</tg-spoiler>\n",
+			html.EscapeString(w.Spelling), html.EscapeString(w.RUTranslation))
 	}
 
 	return strings.TrimSpace(b.String())
@@ -92,10 +90,10 @@ func FormatDictionaryDetails(dict domain.Dictionary, words []domain.DictionaryWo
 
 func FormatLearningWordCard(word domain.LearningWord) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("🇬🇧 <b>%s</b> — %s\n\n",
-		html.EscapeString(word.Spelling), html.EscapeString(word.Transcription)))
+	fmt.Fprintf(&b, "🇬🇧 <b>%s</b> — %s\n\n",
+		html.EscapeString(word.Spelling), html.EscapeString(word.Transcription))
 
-	b.WriteString(fmt.Sprintf("🇷🇺 <tg-spoiler>%s</tg-spoiler>\n\n", html.EscapeString(word.RUTranslation)))
+	fmt.Fprintf(&b, "🇷🇺 <tg-spoiler>%s</tg-spoiler>\n\n", html.EscapeString(word.RUTranslation))
 
 	b.WriteString("Примеры использования в речи:\n" +
 		"*тут может быть куча предложений, чтобы лучше понять контекст употребления, но пока их нет*")
@@ -105,9 +103,9 @@ func FormatLearningWordCard(word domain.LearningWord) string {
 
 func FormatReviewWordCard(word *domain.ReviewWord) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("🇬🇧 <b>%s</b> — %s\n\n",
-		html.EscapeString(word.Spelling), html.EscapeString(word.Transcription)))
-	b.WriteString(fmt.Sprintf("🇷🇺 <tg-spoiler>%s</tg-spoiler>", html.EscapeString(word.RUTranslation)))
+	fmt.Fprintf(&b, "🇬🇧 <b>%s</b> — %s\n\n",
+		html.EscapeString(word.Spelling), html.EscapeString(word.Transcription))
+	fmt.Fprintf(&b, "🇷🇺 <tg-spoiler>%s</tg-spoiler>", html.EscapeString(word.RUTranslation))
 
 	return b.String()
 }

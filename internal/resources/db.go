@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	_ "github.com/lib/pq"
-
 	"github.com/krezefal/eng-tg-bot/pkg/log"
+	_ "github.com/lib/pq"
 )
 
 const dbPingTimeout = 5 * time.Second

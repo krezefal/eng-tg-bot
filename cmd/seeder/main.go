@@ -11,10 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/krezefal/eng-tg-bot/pkg/log"
 	_ "github.com/lib/pq"
 	"github.com/subosito/gotenv"
-
-	"github.com/krezefal/eng-tg-bot/pkg/log"
 )
 
 const serviceName = "seeder"
@@ -55,7 +54,7 @@ func helpFn() {
 }
 
 // TODO: current realization is only for dicts with random_pool mode; add
-// support of on_schedule mode
+// support of on_schedule mode.
 func main() {
 	up := flag.Bool(flagUpName, false, "apply dictionary seed")
 	down := flag.Bool(flagDownName, false, "rollback dictionary seed")

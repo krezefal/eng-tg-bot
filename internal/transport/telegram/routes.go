@@ -3,9 +3,8 @@ package telegram
 import (
 	"context"
 
-	tele "gopkg.in/telebot.v4"
-
 	"github.com/krezefal/eng-tg-bot/internal/transport/telegram/ui"
+	tele "gopkg.in/telebot.v4"
 )
 
 type Handlers interface {

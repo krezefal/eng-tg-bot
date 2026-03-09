@@ -1,0 +1,27 @@
+version: 2
+
+run:
+  timeout: 5m
+
+linters:
+  disable-all: true
+  enable: 
+    - godot
+
+    - govet
+    - staticcheck
+    - errcheck
+    - unused
+
+    - gocritic
+
+formatters:
+  disable-all: true
+  enable:
+    - gci
+    - gofmt
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true

@@ -3,10 +3,9 @@ package mapper
 import (
 	"errors"
 
-	tele "gopkg.in/telebot.v4"
-
 	"github.com/krezefal/eng-tg-bot/internal/domain"
 	"github.com/krezefal/eng-tg-bot/internal/transport/telegram/ui"
+	tele "gopkg.in/telebot.v4"
 )
 
 type ReviewUIState int

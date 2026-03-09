@@ -4,9 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"golang.org/x/sync/errgroup"
-
 	"github.com/krezefal/eng-tg-bot/pkg/log"
+	"golang.org/x/sync/errgroup"
 )
 
 type Resources struct {

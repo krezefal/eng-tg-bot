@@ -73,7 +73,7 @@ func ComputeSM2(input *SM2Input, now time.Time) (*SM2Result, error) {
 	}
 
 	qualityDiff := float64(MaxGrade - input.Grade)
-	ef = ef + (0.1 - qualityDiff*(0.08+qualityDiff*0.02))
+	ef += (0.1 - qualityDiff*(0.08+qualityDiff*0.02))
 	if ef < 1.3 {
 		ef = 1.3
 	}
